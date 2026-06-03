@@ -1,4 +1,4 @@
-import { ShieldAlert, UploadCloud, Eraser, FileImage, Minimize2, Wand2, ArrowRight } from "lucide-react";
+import { ShieldAlert, Eraser, FileImage, Minimize2, Wand2, ArrowRight } from "lucide-react";
 
 import { Link } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
@@ -24,29 +24,6 @@ export const ImageLab = () => {
       </div>
 
       <div className="max-w-[1440px] mx-auto grid grid-cols-1 md:grid-cols-12 gap-6">
-        {/* Bulk Upload Area */}
-        <div className="md:col-span-12 xl:col-span-8 bg-surface-container-lowest border border-border-slate rounded-xl p-8 flex flex-col items-center justify-center text-center min-h-[400px] hover:shadow-md transition-shadow group relative overflow-hidden">
-          <div className="absolute inset-0 bg-primary/5 opacity-0 group-hover:opacity-100 transition-opacity border-2 border-dashed border-primary rounded-xl pointer-events-none z-0"></div>
-          <div className="z-10 flex flex-col items-center">
-            <div className="w-20 h-20 bg-surface-container-low rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-              <UploadCloud className="w-10 h-10 text-primary" />
-            </div>
-            <h2 className="text-2xl font-semibold text-heading-navy mb-2">Bulk Image Processing</h2>
-            <p className="text-base text-on-surface-variant mb-8 max-w-md">
-              Drag and drop multiple images here to resize, convert, or enhance them all at once.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-              <button className="text-sm font-medium text-on-primary bg-primary px-6 py-3 rounded-lg hover:bg-primary-container transition-colors shadow-sm">
-                Select Files
-              </button>
-              <button className="text-sm font-medium text-heading-navy bg-surface-container-lowest border border-border-slate px-6 py-3 rounded-lg hover:bg-surface-container-low transition-colors">
-                Import from URL
-              </button>
-            </div>
-            <p className="text-sm text-outline mt-6">Supports JPG, PNG, WebP, SVG up to 50MB per file.</p>
-          </div>
-        </div>
-
         {/* Tool Cards */}
         {[
           {

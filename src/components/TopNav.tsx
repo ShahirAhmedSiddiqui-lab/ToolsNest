@@ -22,7 +22,7 @@ export const TopNav = ({ onToggleSidebar, isSidebarOpen = true }: TopNavProps) =
   ];
 
   return (
-    <nav className="bg-surface-container-lowest border-b border-border-slate sticky top-0 w-full z-50 flex justify-center">
+    <nav className="bg-surface-container-lowest border border-border-slate rounded-b-xl sticky top-0 w-full z-50 flex justify-center m-2 md:m-3">
       <div className="w-full max-w-[1440px] flex justify-between lg:justify-center flex-wrap gap-y-4 items-center px-margin-mobile md:px-margin-desktop h-auto min-h-16 py-3 relative">
         <div className="flex items-center lg:absolute lg:left-0 lg:ml-margin-desktop h-full z-10 shrink-0 gap-3">
           {onToggleSidebar && (

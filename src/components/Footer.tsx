@@ -3,7 +3,7 @@ import { Leaf } from "lucide-react";
 
 export const Footer = () => {
   return (
-    <footer className="bg-surface-container-lowest border-t border-border-slate w-full z-10 relative mt-auto">
+    <footer className="bg-surface-container-lowest border border-border-slate rounded-t-xl w-full z-10 relative mt-auto m-2 md:m-3">
       <div className="w-full mx-auto flex justify-center px-margin-mobile md:px-margin-desktop">
         <div className="w-full max-w-[1440px] py-8 flex flex-col md:flex-row justify-between items-center gap-6">
           <div className="mb-4 md:mb-0 text-center md:text-left flex items-center gap-2">

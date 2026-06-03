@@ -26,7 +26,7 @@ export const SideNav = ({ isOpen = true }: SideNavProps) => {
   if (!isOpen) return null;
 
   return (
-    <aside className="sticky top-16 h-[calc(100vh-64px)] w-64 p-4 flex-col bg-surface border-r border-border-slate z-40 hidden lg:flex shrink-0 transition-all duration-300">
+    <aside className="sticky top-[88px] h-[calc(100vh-104px)] w-64 p-4 flex-col bg-surface border border-border-slate rounded-r-xl z-40 hidden lg:flex shrink-0 transition-all duration-300 m-2 md:m-3 mr-0">
       <nav className="flex-1 flex flex-col gap-1">
         {menuItems.map((item) => {
           const isActive = path.startsWith(item.href);
@@ -51,10 +51,10 @@ export const SideNav = ({ isOpen = true }: SideNavProps) => {
 
       <div className="mt-auto flex flex-col pb-4">
         <div className="flex justify-between gap-2 px-2">
-          <Link to="#" className="flex-1 bg-surface-container-low text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors flex justify-center items-center gap-1.5 text-xs font-medium py-2 rounded-lg border border-border-slate">
+          <Link to="/security" className="flex-1 bg-surface-container-low text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors flex justify-center items-center gap-1.5 text-xs font-medium py-2 rounded-lg border border-border-slate">
             <Shield className="w-3.5 h-3.5" /> Security
           </Link>
-          <Link to="#" className="flex-1 bg-surface-container-low text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors flex justify-center items-center gap-1.5 text-xs font-medium py-2 rounded-lg border border-border-slate">
+          <Link to="/privacy" className="flex-1 bg-surface-container-low text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors flex justify-center items-center gap-1.5 text-xs font-medium py-2 rounded-lg border border-border-slate">
             <Lock className="w-3.5 h-3.5" /> Privacy
           </Link>
         </div>

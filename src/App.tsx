@@ -55,6 +55,8 @@ import { TextRewriter } from "./pages/TextRewriter";
 import { GrammarFixer } from "./pages/GrammarFixer";
 import { ContentCalendarGenerator } from "./pages/ContentCalendarGenerator";
 import { AllTools } from "./pages/AllTools";
+import { Security } from "./pages/Security";
+import { Privacy } from "./pages/Privacy";
 
 export default function App() {
   return (
@@ -114,6 +116,9 @@ export default function App() {
           <Route path="/calculators/bmi" element={<BMICalculator />} />
           <Route path="/calculators/calories" element={<CalorieCalculator />} />
           <Route path="/calculators/tdee" element={<TDEECalculator />} />
+
+          <Route path="/security" element={<Security />} />
+          <Route path="/privacy" element={<Privacy />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Route>
