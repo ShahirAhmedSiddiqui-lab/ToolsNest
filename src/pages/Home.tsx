@@ -1,4 +1,5 @@
 import { useState } from "react";
+import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Search, ShieldAlert, FileText, Image as ImageIcon, Brain, GraduationCap, Activity, Briefcase, Code } from "lucide-react";
 
@@ -6,7 +7,7 @@ export const Home = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
 
-  const handleSearch = (e?: React.FormEvent) => {
+  const handleSearch = (e?: FormEvent) => {
     if (e) {
       e.preventDefault();
     }
@@ -73,7 +74,7 @@ export const Home = () => {
             { icon: Brain, title: "AI Writing", desc: "Grammar checks, summarizing, and structured text generation utilities.", href: "/ai-tools" },
             { icon: Code, title: "Dev Tools", desc: "JSON formatting, case converters, and developer utilities.", href: "/developer-tools" },
             { icon: GraduationCap, title: "Student Hub", desc: "Citation generators, word counters, and academic formatting aids.", href: "/student-tools" },
-            { icon: Activity, title: "Health Calculators", desc: "BMI, macro trackers, and other essential wellness metrics.", href: "/calculators/health" },
+            { icon: Activity, title: "Health Calculators", desc: "BMI, macro trackers, and other essential wellness metrics.", href: "/calculators" },
             { icon: Briefcase, title: "Business Tools", desc: "Invoice generators, tax calculators, and financial utility suites.", href: "/business" },
           ].map((tool) => {
             const Icon = tool.icon;

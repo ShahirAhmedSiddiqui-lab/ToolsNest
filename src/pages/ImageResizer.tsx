@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import type { DragEvent } from "react";
 import { Image as ImageIcon, Maximize, Download, Trash2, AlertCircle } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
@@ -27,7 +28,7 @@ export const ImageResizer = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const files = e.dataTransfer.files;

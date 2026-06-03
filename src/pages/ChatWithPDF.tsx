@@ -1,6 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, UploadCloud, ArrowLeft, ShieldAlert } from "lucide-react";
-import { Link } from "react-router-dom";
+import { MessageSquare, ShieldAlert, FileText } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 export const ChatWithPDF = () => {

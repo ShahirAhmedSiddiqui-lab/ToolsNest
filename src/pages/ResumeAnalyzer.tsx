@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import type { DragEvent } from "react";
 import { FileSearch, Upload, Trash2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 import { analyzeResume, isGeminiAvailable } from "../services/gemini";
@@ -27,7 +28,7 @@ export const ResumeAnalyzer = () => {
     reader.readAsText(file);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = (e: DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
     const files = e.dataTransfer.files;

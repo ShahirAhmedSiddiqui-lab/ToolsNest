@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Quote, Play, CheckCircle2 } from "lucide-react";
+import type { FormEvent } from "react";
+import { Quote, CheckCircle2 } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 export const CitationGenerator = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
     setTimeout(() => {

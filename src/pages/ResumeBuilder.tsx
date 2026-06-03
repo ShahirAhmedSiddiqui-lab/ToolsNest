@@ -1,12 +1,13 @@
 import { useState } from "react";
-import { Briefcase, Play, CheckCircle2 } from "lucide-react";
+import type { FormEvent } from "react";
+import { Briefcase, CheckCircle2 } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 export const ResumeBuilder = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setIsProcessing(true);
     setTimeout(() => {

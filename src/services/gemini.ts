@@ -155,17 +155,21 @@ export async function generateQuizQuestions(
  */
 export async function generateContentCalendar(
   topic: string,
+  audience = "general audience",
+  platform = "social media",
   numberOfDays: number = 30
 ): Promise<string> {
-  const prompt = `Generate a ${numberOfDays}-day content calendar for the topic: "${topic}". Format it as a daily plan with content ideas for each day.`;
+  const prompt = `Generate a ${numberOfDays}-day content calendar for "${topic}" on ${platform}, targeting ${audience}. Format it as a daily plan with content ideas for each day.`;
   return generateContent(prompt, { temperature: 0.7 });
 }
 
 /**
  * Generate resume suggestions
  */
-export async function analyzeResume(resumeText: string): Promise<string> {
-  const prompt = `Analyze this resume and provide constructive feedback for improvement:\n\n${resumeText}`;
+export async function analyzeResume(resumeText: string, jobDescription = ""): Promise<string> {
+  const prompt = jobDescription.trim()
+    ? `Analyze this resume against the job description and provide constructive, targeted feedback.\n\nResume:\n${resumeText}\n\nJob Description:\n${jobDescription}`
+    : `Analyze this resume and provide constructive feedback for improvement:\n\n${resumeText}`;
   return generateContent(prompt, { temperature: 0.5 });
 }
 
@@ -173,10 +177,12 @@ export async function analyzeResume(resumeText: string): Promise<string> {
  * Generate cover letter
  */
 export async function generateCoverLetter(
-  jobDescription: string,
-  resumeHighlights: string
+  jobTitle: string,
+  companyName: string,
+  applicantName: string,
+  resumeHighlights = ""
 ): Promise<string> {
-  const prompt = `Generate a professional cover letter based on this job description and resume highlights:\n\nJob Description:\n${jobDescription}\n\nResume Highlights:\n${resumeHighlights}`;
+  const prompt = `Generate a professional cover letter for ${applicantName} applying for the ${jobTitle} role at ${companyName}.\n\nResume Highlights:\n${resumeHighlights || "Not provided"}`;
   return generateContent(prompt, { temperature: 0.7 });
 }
 

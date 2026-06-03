@@ -21,9 +21,9 @@ const allTools = [
   { category: "Image Lab", name: "WebP Converter", href: "/image-tools/webp-converter", icon: ImageIcon, desc: "Convert to and from WebP." },
   
   // Health
-  { category: "Health Calculators", name: "BMI Calculator", href: "/calculators/health/bmi", icon: Activity, desc: "Calculate your BMI." },
-  { category: "Health Calculators", name: "Calorie Calculator", href: "/calculators/health/calories", icon: Activity, desc: "Calculate daily calorie needs." },
-  { category: "Health Calculators", name: "TDEE Calculator", href: "/calculators/health/tdee", icon: Activity, desc: "Calculate Total Daily Energy Expenditure." },
+  { category: "Health Calculators", name: "BMI Calculator", href: "/calculators/bmi", icon: Activity, desc: "Calculate your BMI." },
+  { category: "Health Calculators", name: "Calorie Calculator", href: "/calculators/calories", icon: Activity, desc: "Calculate daily calorie needs." },
+  { category: "Health Calculators", name: "TDEE Calculator", href: "/calculators/tdee", icon: Activity, desc: "Calculate Total Daily Energy Expenditure." },
   
   // Student
   { category: "Student Hub", name: "CGPA Calculator", href: "/student-tools/cgpa-calculator", icon: GraduationCap, desc: "Calculate your GPA and CGPA." },
