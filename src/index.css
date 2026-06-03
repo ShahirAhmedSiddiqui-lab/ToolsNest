@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-surface: #f8f9ff;
+  --color-surface-dim: #ccdbf3;
+  --color-surface-bright: #f8f9ff;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #eff4ff;
+  --color-surface-container: #e6eeff;
+  --color-surface-container-high: #dce9ff;
+  --color-surface-container-highest: #d5e3fc;
+  --color-on-surface: #0d1c2e;
+  --color-on-surface-variant: #434655;
+  --color-inverse-surface: #233144;
+  --color-outline: #737686;
+  --color-outline-variant: #c3c6d7;
+  --color-primary: #004ac6;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #2563eb;
+  --color-on-primary-container: #eeefff;
+  --color-secondary: #006b5f;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #6df5e1;
+  --color-success-teal: #14B8A6;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-heading-navy: #0F172A;
+  --color-border-slate: #E2E8F0;
+  --color-link-blue: #2563EB;
+
+  --font-sans: "Geist", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+  --spacing-margin-desktop: 48px;
+  --spacing-margin-mobile: 16px;
+  --spacing-gutter: 24px;
+}
+
+html, body {
+  overflow-x: hidden;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-surface);
+  color: var(--color-on-surface);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-slate);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-outline-variant);
+}
