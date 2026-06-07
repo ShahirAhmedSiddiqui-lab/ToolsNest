@@ -1,6 +1,6 @@
 import { ChangeEvent, DragEvent, useRef, useState } from "react";
 import { CheckCircle2, Download, FileText, Image as ImageIcon, ShieldAlert } from "lucide-react";
-import { downloadBlob, formatBytes, PdfToolId, PdfToolOptions, processPdfTool, ToolResult, validateFiles } from "../lib/pdfTools";
+import { downloadBlob, formatBytes, getPdfPageCount, PdfToolId, PdfToolOptions, processPdfTool, ToolResult, validateFiles } from "../lib/pdfTools";
 
 type Props = {
   tool: PdfToolId;
@@ -21,28 +21,38 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
     orientation: "portrait",
     splitMode: "ranges",
     ranges: "1",
+    fixedRange: 2,
     jpgQuality: 90,
   });
+  const [pageCount, setPageCount] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState("");
   const [result, setResult] = useState<ToolResult | null>(null);
 
   const Icon = icon === "image" ? ImageIcon : FileText;
 
-  const pickFiles = (selected: FileList | null) => {
+  const pickFiles = async (selected: FileList | null) => {
     const next = Array.from(selected ?? []);
     setFiles(next);
     setResult(null);
     setError(validateFiles(tool, next));
+    setPageCount(null);
+    if (tool === "split-pdf" && next.length === 1) {
+      try {
+        setPageCount(await getPdfPageCount(next[0]));
+      } catch {
+        setError("Could not read the PDF page count.");
+      }
+    }
   };
 
   const onDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
-    pickFiles(event.dataTransfer.files);
+    void pickFiles(event.dataTransfer.files);
   };
 
-  const onInput = (event: ChangeEvent<HTMLInputElement>) => pickFiles(event.target.files);
+  const onInput = (event: ChangeEvent<HTMLInputElement>) => void pickFiles(event.target.files);
 
   const runTool = async () => {
     setError("");
@@ -103,13 +113,25 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
       )}
 
       {tool === "split-pdf" && (
-        <div className="mb-4 flex flex-wrap justify-center gap-3">
+        <div className="mb-4 flex max-w-xl flex-col items-center gap-3 text-left">
+          {pageCount && <p className="text-sm font-medium text-primary">Total pages: {pageCount}</p>}
           <select className="bg-surface-container-low border border-border-slate rounded-lg px-4 py-2 text-sm" value={options.splitMode} onChange={(event) => setOptions({ ...options, splitMode: event.target.value as PdfToolOptions["splitMode"] })}>
-            <option value="ranges">Page ranges</option>
-            <option value="every">Every page</option>
+            <option value="selected">Extract selected pages</option>
+            <option value="ranges">Split by custom ranges</option>
+            <option value="fixed">Split every N pages</option>
+            <option value="every">Extract every page as a separate PDF</option>
           </select>
-          {options.splitMode === "ranges" && (
-            <input className="bg-surface-container-low border border-border-slate rounded-lg px-4 py-2 text-sm w-40" value={options.ranges} onChange={(event) => setOptions({ ...options, ranges: event.target.value })} placeholder="1-3,5" />
+          {(options.splitMode === "selected" || options.splitMode === "ranges") && (
+            <>
+              <input className="bg-surface-container-low border border-border-slate rounded-lg px-4 py-2 text-sm w-64" value={options.ranges} onChange={(event) => setOptions({ ...options, ranges: event.target.value })} placeholder={options.splitMode === "selected" ? "1,3,5" : "1-3,5,8-10"} />
+              <p className="text-xs text-on-surface-variant">Use commas for separate pages and hyphens for ranges. Example: 1-3, 5, 8-10</p>
+            </>
+          )}
+          {options.splitMode === "fixed" && (
+            <label className="text-sm text-heading-navy">
+              Split every{" "}
+              <input type="number" min={1} className="bg-surface-container-low border border-border-slate rounded-lg px-3 py-2 text-sm w-20" value={options.fixedRange ?? 2} onChange={(event) => setOptions({ ...options, fixedRange: Number(event.target.value) })} /> pages
+            </label>
           )}
         </div>
       )}
