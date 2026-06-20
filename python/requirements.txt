@@ -1,5 +1,0 @@
-pymupdf
-pypdf
-pikepdf
-pillow
-pdf2docx

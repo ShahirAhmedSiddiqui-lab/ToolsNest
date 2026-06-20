@@ -39,6 +39,12 @@
   --spacing-gutter: 24px;
 }
 
+@media print {
+  body * { visibility: hidden !important; }
+  [data-print-root], [data-print-root] * { visibility: visible !important; }
+  [data-print-root] { position: absolute !important; inset: 0 !important; width: 100% !important; min-height: 100% !important; border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+}
+
 html, body {
   overflow-x: hidden;
 }

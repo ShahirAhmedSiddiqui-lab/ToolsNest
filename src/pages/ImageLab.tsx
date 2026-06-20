@@ -1,4 +1,4 @@
-import { ShieldAlert, Eraser, FileImage, Minimize2, Wand2, ArrowRight } from "lucide-react";
+import { ShieldAlert, FileImage, Minimize2, ArrowRight } from "lucide-react";
 
 import { Link } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
@@ -28,7 +28,7 @@ export const ImageLab = () => {
         {[
           {
             title: "Image Compressor",
-            desc: "Compress JPG, PNG, SVG, and GIFs securely.",
+            desc: "Compress JPG, PNG, and WebP images securely.",
             icon: Minimize2,
             tags: ["Performance", "Bulk"],
             href: "/image-tools/compressor"
@@ -46,13 +46,6 @@ export const ImageLab = () => {
             icon: FileImage,
             tags: ["Next-Gen"],
             href: "/image-tools/webp-converter"
-          },
-          {
-            title: "BG Remover",
-            desc: "Instantly remove backgrounds from photos with AI precision.",
-            icon: Eraser,
-            tags: ["AI Powered"],
-            href: "#"
           }
         ].map((tool) => {
           const Icon = tool.icon;

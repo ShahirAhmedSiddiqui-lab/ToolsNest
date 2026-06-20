@@ -14,11 +14,11 @@ export const WordToPDF = () => {
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-heading-navy mb-4">Word to PDF</h1>
           <p className="text-lg text-on-surface-variant max-w-2xl">
-            Securely convert your Word documents into PDF files.
+            Convert DOCX content into a readable PDF locally. Complex Word layouts may be simplified.
           </p>
         </div>
 
-        <PdfToolUpload tool="word-to-pdf" title="Upload your Word document here" browseText="Select Word Document" accept=".doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        <PdfToolUpload tool="word-to-pdf" title="Upload your DOCX document here" browseText="Select DOCX" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
       </div>
     </div>
   );

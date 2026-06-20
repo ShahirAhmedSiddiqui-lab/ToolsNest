@@ -1,114 +1,15 @@
-import { ShieldAlert, Lock, CheckCircle, Database, Cloud } from "lucide-react";
+import { CheckCircle, Cloud, Database, Lock, ShieldAlert } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
-export const Security = () => {
-  return (
-    <div className="flex-1 w-full p-margin-mobile md:p-margin-desktop">
-      {/* Header Section */}
-      <div className="max-w-[1440px] mx-auto mb-12">
-        <Breadcrumbs />
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-14 h-14 bg-success-teal/10 rounded-full flex items-center justify-center">
-              <ShieldAlert className="w-8 h-8 text-success-teal" />
-            </div>
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-heading-navy">Security</h1>
-              <p className="text-lg text-on-surface-variant mt-1">Built with security as a first-class citizen</p>
-            </div>
-          </div>
-        </div>
-      </div>
+const practices = [
+  [Lock, "Local by default", "PDF conversion, image processing, calculators, document builders, and developer tools execute inside your browser."],
+  [Cloud, "Explicit AI boundary", "AI document tools disclose when data will be sent to Gemini and require consent before a file upload."],
+  [Database, "No application storage", "ToolsNest has no database or persistent file store. Local buffers are released after use and remote AI files are deleted by the application."],
+  [CheckCircle, "Protected credentials", "The Gemini key exists only in Vercel Functions. It is never exposed through a VITE_ environment variable or browser bundle."],
+] as const;
 
-      <div className="max-w-[1440px] mx-auto">
-        {/* Security Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
-          <div className="bg-surface-container-lowest border border-border-slate rounded-xl p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <Lock className="w-6 h-6 text-success-teal" />
-              <h2 className="text-2xl font-semibold text-heading-navy">Local Processing</h2>
-            </div>
-            <p className="text-on-surface-variant leading-relaxed">
-              All file processing happens entirely in your browser. Your data never leaves your device or gets uploaded to external servers. What you process stays with you.
-            </p>
-          </div>
-
-          <div className="bg-surface-container-lowest border border-border-slate rounded-xl p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <Database className="w-6 h-6 text-success-teal" />
-              <h2 className="text-2xl font-semibold text-heading-navy">No Data Storage</h2>
-            </div>
-            <p className="text-on-surface-variant leading-relaxed">
-              ToolsNest never stores your files, documents, or any personal information. Each session is isolated and temporary data is cleared from memory immediately after processing.
-            </p>
-          </div>
-
-          <div className="bg-surface-container-lowest border border-border-slate rounded-xl p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <Cloud className="w-6 h-6 text-success-teal" />
-              <h2 className="text-2xl font-semibold text-heading-navy">Open Source</h2>
-            </div>
-            <p className="text-on-surface-variant leading-relaxed">
-              Our codebase is publicly available for security audits. Anyone can review the source code to verify our security practices and ensure transparency.
-            </p>
-          </div>
-
-          <div className="bg-surface-container-lowest border border-border-slate rounded-xl p-8">
-            <div className="flex items-center gap-3 mb-4">
-              <CheckCircle className="w-6 h-6 text-success-teal" />
-              <h2 className="text-2xl font-semibold text-heading-navy">HTTPS Only</h2>
-            </div>
-            <p className="text-on-surface-variant leading-relaxed">
-              All connections are encrypted using industry-standard HTTPS protocols. Your browser ensures all data in transit is protected from interception.
-            </p>
-          </div>
-        </div>
-
-        {/* Security Practices */}
-        <div className="bg-surface-container-lowest border border-border-slate rounded-xl p-8 mb-12">
-          <h2 className="text-2xl font-semibold text-heading-navy mb-6">Our Security Practices</h2>
-          <ul className="space-y-4">
-            <li className="flex gap-3">
-              <CheckCircle className="w-5 h-5 text-success-teal flex-shrink-0 mt-1" />
-              <span className="text-on-surface-variant">
-                <strong>No Third-Party Tracking:</strong> We don't use analytics tools or trackers that monitor your behavior or collect personal data.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <CheckCircle className="w-5 h-5 text-success-teal flex-shrink-0 mt-1" />
-              <span className="text-on-surface-variant">
-                <strong>No Cookies:</strong> We don't use tracking cookies or persistent identifiers to follow you across the web.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <CheckCircle className="w-5 h-5 text-success-teal flex-shrink-0 mt-1" />
-              <span className="text-on-surface-variant">
-                <strong>Regular Updates:</strong> We maintain up-to-date dependencies and apply security patches promptly to address vulnerabilities.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <CheckCircle className="w-5 h-5 text-success-teal flex-shrink-0 mt-1" />
-              <span className="text-on-surface-variant">
-                <strong>Code Review:</strong> Security-sensitive code undergoes thorough peer review before deployment.
-              </span>
-            </li>
-            <li className="flex gap-3">
-              <CheckCircle className="w-5 h-5 text-success-teal flex-shrink-0 mt-1" />
-              <span className="text-on-surface-variant">
-                <strong>Secure Dependencies:</strong> All third-party libraries are carefully vetted and monitored for known vulnerabilities.
-              </span>
-            </li>
-          </ul>
-        </div>
-
-        {/* Trust Banner */}
-        <div className="bg-success-teal/5 border border-success-teal/20 rounded-xl p-8 text-center">
-          <h3 className="text-xl font-semibold text-heading-navy mb-2">Security Through Clarity</h3>
-          <p className="text-on-surface-variant max-w-2xl mx-auto">
-            Your trust is paramount. We believe in transparency and security through clarity. Every feature is designed with your privacy and safety in mind.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-};
+export const Security = () => <div className="flex-1 w-full p-margin-mobile md:p-margin-desktop"><div className="max-w-[1200px] mx-auto"><Breadcrumbs />
+  <header className="mb-10 flex items-center gap-4"><div className="flex h-14 w-14 items-center justify-center rounded-full bg-success-teal/10"><ShieldAlert className="h-8 w-8 text-success-teal" /></div><div><h1 className="text-3xl font-bold text-heading-navy md:text-4xl">Security</h1><p className="mt-1 text-on-surface-variant">Clear trust boundaries and minimal infrastructure</p></div></header>
+  <div className="grid gap-6 md:grid-cols-2">{practices.map(([Icon,title,description]) => <section key={title} className="rounded-xl border border-border-slate bg-surface-container-lowest p-7"><Icon className="h-6 w-6 text-success-teal" /><h2 className="mt-4 text-xl font-semibold text-heading-navy">{title}</h2><p className="mt-2 leading-7 text-on-surface-variant">{description}</p></section>)}</div>
+  <section className="mt-8 rounded-xl border border-border-slate bg-surface-container-lowest p-7"><h2 className="text-xl font-semibold text-heading-navy">Operational safeguards</h2><ul className="mt-4 list-disc space-y-2 pl-5 text-on-surface-variant"><li>Strict file type, size, page-count, action, origin, and output limits.</li><li>No arbitrary server-side URL fetching or client-controlled model configuration.</li><li>AI endpoints return no-store responses and avoid logging document contents or upload URLs.</li><li>Anonymous AI endpoints must be protected by Vercel Firewall rate limits.</li></ul></section>
+</div></div>;

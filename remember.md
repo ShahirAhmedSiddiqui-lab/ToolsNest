@@ -1,221 +1,54 @@
 # ToolsNest Project Memory
 
-## Project Shape
+## Current Architecture
 
-ToolsNest is a Vite + React + TypeScript app in `D:\ToolsNest`.
+ToolsNest is a Vite + React + TypeScript application deployed as one Vercel project.
 
-Core stack:
-- Vite frontend on port `3000`
-- React Router routes in `src/App.tsx`
-- Tool pages in `src/pages`
-- Shared UI in `src/components`
-- PDF backend in `backend/server.js`
-- Python PDF scripts in `python/`
+- All deterministic PDF, image, document, calculator, citation, QR, and developer tools run in the browser.
+- CPU-heavy libraries are dynamically imported only by the routes that use them.
+- AI uses same-project Vercel Functions under `api/ai/`.
+- The Gemini key is server-only in `GEMINI_API_KEY`.
+- AI document files upload directly from the browser to Gemini after explicit consent.
+- There is no Express server, Python runtime, LibreOffice dependency, Docker image, Render service, database, or persistent file store.
 
-This is not a Next.js app. Do not add `/pages/api` routes for this repo.
+## Main Boundaries
 
-## Main Work Completed
+- `src/tools/registry.ts`: canonical registry for all 31 tool routes, search metadata, execution mode, and lazy page loading.
+- `src/lib/pdfTools.ts`: browser-local PDF, DOCX, and PPTX processors.
+- `src/components/ImageTool.tsx`: browser-local image compression and conversion.
+- `src/services/gemini.ts`: typed browser client for same-origin AI functions and direct Gemini uploads.
+- `api/ai/upload-session.ts`: creates resumable Gemini upload sessions without exposing the API key.
+- `api/ai/generate.ts`: validates allow-listed AI actions and streams Gemini responses.
+- `api/ai/file.ts`: deletes Gemini files.
+- `server/`: shared serverless-only validation and Gemini helpers; it is not a standalone backend.
 
-### Initial Cleanup
+## File and Privacy Limits
 
-- Fixed TypeScript lint errors.
-- Fixed broken health calculator routes:
-  - old bad links: `/calculators/health/...`
-  - correct links: `/calculators/bmi`, `/calculators/calories`, `/calculators/tdee`
-- Fixed Gemini service function signatures to match page calls.
+- Local file size: 20 MB each, 40 MB combined.
+- Raster PDF operations: 50 pages.
+- AI document size: 10 MB.
+- AI document types: PDF and plain text.
+- Text AI input: 25,000 characters.
+- Local results remain in memory only.
+- One-shot Gemini files are deleted after processing; chat files are deleted when the session ends.
 
-### PDF Backend Architecture
-
-The uploaded implementation file originally described Next.js API routes, but the error notes correctly said this project is Vite and needs a separate backend.
-
-Implemented:
-- `backend/server.js`
-- `python/merge.py`
-- `python/split.py`
-- `python/compress.py`
-- `python/pdf_to_image.py`
-- `python/image_to_pdf.py`
-- `python/pdf_to_docx.py`
-- `python/pdf_layout.py`
-- `python/requirements.txt`
-
-Frontend PDF upload component still uses the existing `PdfToolUpload` flow, but `src/lib/pdfTools.ts` now sends files to:
-
-```txt
-/api/pdf/process
-```
-
-Vite dev proxy forwards `/api` to:
-
-```txt
-http://localhost:5000
-```
-
-Local run:
+## Commands
 
 ```bash
-npm run server
 npm run dev
-```
-
-### PDF Tool Improvements
-
-Implemented/fixed:
-- PDF to Word
-  - tries LibreOffice PDF import to DOCX first
-  - falls back to `pdf2docx`
-  - avoids plain text paragraph-only conversion
-- Word to PDF
-  - uses LibreOffice when available for layout preservation
-  - falls back to text-only PDF with a clear message
-- Merge PDF
-  - fixed `PdfMerger` ImportError by switching to `PdfWriter`
-- Split PDF
-  - supports selected pages
-  - supports custom ranges
-  - supports fixed N-page chunks
-  - supports every page as separate PDF
-  - validates invalid text, reversed ranges, positive page numbers, and out-of-range pages
-- PDF to JPG
-  - returns direct `.jpg` for single-page PDFs
-  - returns ZIP for multi-page PDFs
-  - uses higher render quality
-- PDF to PPT
-  - creates editable text boxes where PyMuPDF can extract layout text
-  - no longer relies only on page screenshots
-
-### Important Local Dependencies
-
-Python is installed:
-
-```txt
-Python 3.14.3
-```
-
-Required Python libraries:
-
-```bash
-python -m pip install -r python/requirements.txt
-```
-
-Current `python/requirements.txt`:
-
-```txt
-pymupdf
-pypdf
-pikepdf
-pillow
-pdf2docx
-```
-
-LibreOffice is installed locally at:
-
-```txt
-C:\Program Files\LibreOffice\program\soffice.exe
-```
-
-Backend detection order:
-- `SOFFICE_BIN`
-- `C:\Program Files\LibreOffice\program\soffice.exe`
-- `C:\Program Files (x86)\LibreOffice\program\soffice.exe`
-- `soffice` / `libreoffice` on PATH
-
-### Verification Already Done
-
-Passed:
-
-```bash
 npm run lint
-node --check backend/server.js
-python -m py_compile python\merge.py python\split.py python\compress.py python\pdf_to_image.py python\image_to_pdf.py python\extract_text.py python\pdf_to_docx.py python\pdf_layout.py
-```
-
-Smoke-tested with generated sample PDFs:
-- merge
-- split
-- PDF to JPG
-- PDF to DOCX
-- PDF layout extraction
-
-Some later checks were rejected by the user, usually port checks or smoke tests.
-
-## Deployment Notes
-
-Vercel can host the Vite frontend.
-
-The current PDF backend should not be hosted as a normal Vercel static deployment because it needs:
-- long-running Express server
-- Python
-- native Python packages
-- LibreOffice binary
-- temporary file processing
-
-Production-ready approach:
-- Host frontend on Vercel.
-- Host backend separately on a service that supports Node + Python + LibreOffice, preferably Docker-based.
-- Set frontend env var:
-
-```txt
-VITE_PDF_API_BASE_URL=https://your-backend-domain.com
-```
-
-The backend already supports CORS through:
-
-```txt
-CORS_ORIGIN
-```
-
-Set it in production to the Vercel domain, for example:
-
-```txt
-CORS_ORIGIN=https://your-toolsnest.vercel.app
-```
-
-Recommended backend hosts:
-- Render Web Service
-- Railway
-- Fly.io
-- VPS with Docker
-
-Avoid deploying the current backend directly as Vercel serverless unless it is redesigned around serverless constraints and a custom runtime/container strategy.
-
-## Useful Commands
-
-Frontend:
-
-```bash
-npm run dev
+npm run test
 npm run build
-npm run lint
 ```
 
-Backend:
+Use `vercel dev` when testing the Vercel Functions locally.
 
-```bash
-npm run server
+## Required Vercel Environment
+
+```txt
+GEMINI_API_KEY=...
+GEMINI_MODEL=gemini-2.5-flash
+APP_ORIGIN=https://your-toolsnest.vercel.app
 ```
 
-Python deps:
-
-```bash
-python -m pip install -r python/requirements.txt
-```
-
-LibreOffice override if needed:
-
-```bash
-set SOFFICE_BIN=C:\Program Files\LibreOffice\program\soffice.exe
-```
-
-## Current Production Readiness Gaps
-
-- Backend should be containerized for deployment.
-- Add a Dockerfile that installs:
-  - Node
-  - Python
-  - `python/requirements.txt`
-  - LibreOffice
-- Add backend health route like `/health`.
-- Add request cleanup/age-based temp cleanup for `temp/uploads` and `temp/outputs`.
-- Add clearer production env docs.
-- Consider increasing upload limits only after checking host memory/time limits.
+Configure Vercel Firewall rate limiting for `/api/ai/*` before enabling anonymous public AI access.

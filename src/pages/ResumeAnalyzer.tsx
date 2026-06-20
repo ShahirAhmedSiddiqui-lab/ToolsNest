@@ -1,204 +1,42 @@
-import { useState, useRef } from "react";
-import type { DragEvent } from "react";
-import { FileSearch, Upload, Trash2, Copy, CheckCircle2, AlertCircle } from "lucide-react";
+import { ChangeEvent, useRef, useState } from "react";
+import { Copy, FileSearch, Loader2 } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
-import { analyzeResume, isGeminiAvailable } from "../services/gemini";
+import { deleteAIFile, requestAI, uploadAIFile } from "../services/gemini";
 
 export const ResumeAnalyzer = () => {
-  const [isDragging, setIsDragging] = useState(false);
-  const [resumeText, setResumeText] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [file, setFile] = useState<File | null>(null);
+  const [text, setText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
+  const [consent, setConsent] = useState(false);
   const [analysis, setAnalysis] = useState("");
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [processing, setProcessing] = useState(false);
   const [error, setError] = useState("");
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileUpload = (file: File) => {
-    if (!file.type.startsWith("text/") && !file.name.endsWith(".pdf")) {
-      setError("Please upload a text file or PDF");
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      setResumeText(e.target?.result as string);
-      setError("");
-    };
-    reader.readAsText(file);
+  const select = async (event: ChangeEvent<HTMLInputElement>) => {
+    const next = event.target.files?.[0]; if (!next) return;
+    if (!["application/pdf", "text/plain"].includes(next.type) || next.size > 10 * 1024 * 1024) { setError("Choose a PDF or plain-text resume no larger than 10 MB."); return; }
+    setFile(next); setText(next.type === "text/plain" ? await next.text() : ""); setConsent(false); setError(""); setAnalysis("");
   };
 
-  const handleDrop = (e: DragEvent) => {
-    e.preventDefault();
-    setIsDragging(false);
-    const files = e.dataTransfer.files;
-    if (files.length > 0) {
-      handleFileUpload(files[0]);
-    }
-  };
-
-  const handleAnalyze = async () => {
-    if (!resumeText.trim()) {
-      setError("Please upload or paste your resume");
-      return;
-    }
-
-    if (!isGeminiAvailable()) {
-      setError("AI service is not configured. Please check your API key.");
-      return;
-    }
-
-    setIsProcessing(true);
-    setError("");
+  const analyze = async () => {
+    if ((!file && !text.trim()) || !consent) return;
+    setProcessing(true); setError(""); let remote;
     try {
-      const result = await analyzeResume(resumeText, jobDescription);
-      setAnalysis(result);
-    } catch (err) {
-      setError("Failed to analyze resume. Please try again.");
-      console.error("Resume Analysis Error:", err);
-    } finally {
-      setIsProcessing(false);
-    }
+      if (file?.type === "application/pdf") remote = await uploadAIFile(file);
+      setAnalysis(await requestAI("resume-analysis", { text: remote ? "" : text, jobDescription }, remote));
+    } catch (caught) { setError(caught instanceof Error ? caught.message : "Resume analysis failed."); }
+    finally { if (remote) await deleteAIFile(remote); setProcessing(false); }
   };
 
-  const handleCopy = () => {
-    if (!analysis) return;
-    navigator.clipboard.writeText(analysis);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
-  const handleClear = () => {
-    setResumeText("");
-    setJobDescription("");
-    setAnalysis("");
-    setError("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  return (
-    <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12 flex flex-col">
-      <div className="max-w-5xl mx-auto w-full flex flex-col">
-        <Breadcrumbs />
-
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-heading-navy mb-2 flex items-center gap-3">
-            <div className="bg-primary/10 p-1.5 rounded-lg text-primary inline-flex">
-              <FileSearch className="w-6 h-6" />
-            </div>
-            Resume Analyzer
-          </h1>
-          <p className="text-on-surface-variant max-w-2xl">
-            Get AI-powered feedback on your resume to improve your chances of getting hired.
-          </p>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-error/10 border border-error/20 rounded-lg flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-error flex-shrink-0 mt-0.5" />
-            <p className="text-sm text-error">{error}</p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Input Section */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Resume Upload */}
-            <div className="bg-surface-container-lowest border border-border-slate rounded-xl overflow-hidden">
-              <div className="bg-surface-container-low border-b border-border-slate px-4 py-3">
-                <span className="text-sm font-semibold text-heading-navy">Resume</span>
-              </div>
-              {!resumeText ? (
-                <div
-                  className={`p-8 flex flex-col items-center justify-center text-center border-2 border-dashed transition-all cursor-pointer m-4 rounded-lg ${
-                    isDragging ? "border-primary bg-primary/5" : "border-border-slate hover:border-primary/50"
-                  }`}
-                  onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                  onDragLeave={() => setIsDragging(false)}
-                  onDrop={handleDrop}
-                  onClick={() => fileInputRef.current?.click()}
-                >
-                  <Upload className="w-8 h-8 text-primary mb-2" />
-                  <p className="text-sm font-medium text-heading-navy">Upload resume or paste text</p>
-                  <p className="text-xs text-on-surface-variant">Drag & Drop or click to browse</p>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="text/*,.pdf"
-                    onChange={(e) => e.target.files && handleFileUpload(e.target.files[0])}
-                    className="hidden"
-                  />
-                </div>
-              ) : (
-                <div className="p-4">
-                  <p className="text-xs text-on-surface-variant mb-2">Resume loaded ({resumeText.length} chars)</p>
-                  <textarea
-                    value={resumeText}
-                    onChange={(e) => setResumeText(e.target.value)}
-                    className="w-full h-32 bg-surface border border-border-slate rounded-lg p-3 text-sm text-heading-navy resize-none"
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Job Description */}
-            <div className="bg-surface-container-lowest border border-border-slate rounded-xl overflow-hidden">
-              <div className="bg-surface-container-low border-b border-border-slate px-4 py-3">
-                <span className="text-sm font-semibold text-heading-navy">Job Description (Optional)</span>
-              </div>
-              <div className="p-4">
-                <textarea
-                  value={jobDescription}
-                  onChange={(e) => setJobDescription(e.target.value)}
-                  placeholder="Paste the job description to get targeted feedback..."
-                  className="w-full h-32 bg-surface border border-border-slate rounded-lg p-3 text-sm text-heading-navy resize-none"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action & Output Section */}
-          <div className="flex flex-col space-y-4">
-            {/* Actions */}
-            <div className="bg-surface-container-lowest border border-border-slate rounded-xl p-4 space-y-3">
-              <button
-                onClick={handleAnalyze}
-                disabled={isProcessing || !resumeText.trim()}
-                className="w-full bg-primary text-on-primary font-medium py-2.5 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
-              >
-                {isProcessing ? "Analyzing..." : "Analyze Resume"}
-              </button>
-              <button
-                onClick={handleClear}
-                className="w-full text-error hover:bg-error/10 font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
-              >
-                <Trash2 className="w-4 h-4" /> Clear
-              </button>
-            </div>
-
-            {/* Analysis Output */}
-            {analysis && (
-              <div className="bg-surface-container-lowest border border-border-slate rounded-xl overflow-hidden flex flex-col">
-                <div className="bg-surface-container-low border-b border-border-slate px-4 py-3 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-heading-navy">Analysis</span>
-                  <button
-                    onClick={handleCopy}
-                    className="text-heading-navy hover:text-primary transition-colors p-1.5 rounded"
-                    title="Copy analysis"
-                  >
-                    {copied ? <CheckCircle2 className="w-4 h-4 text-success-teal" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto max-h-96 p-4">
-                  <div className="text-sm text-heading-navy whitespace-pre-wrap font-mono">
-                    {analysis}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12"><div className="max-w-5xl mx-auto"><Breadcrumbs />
+    <header className="mb-8"><h1 className="flex items-center gap-3 text-3xl font-bold text-heading-navy"><FileSearch className="h-8 w-8 text-primary" /> Resume Analyzer</h1><p className="mt-2 text-on-surface-variant">Get focused ATS and job-match feedback through Gemini.</p></header>
+    <div className="grid gap-6 lg:grid-cols-2"><section className="rounded-2xl border border-border-slate bg-surface-container-lowest p-6">
+      <label className="text-sm font-semibold text-heading-navy">Resume text<textarea value={text} onChange={(event) => { setText(event.target.value); setFile(null); }} maxLength={25000} rows={12} className="mt-2 w-full resize-y rounded-lg border border-border-slate p-4" placeholder="Paste resume text, or upload a PDF…" /></label>
+      <input ref={inputRef} type="file" accept="application/pdf,text/plain,.pdf,.txt" className="hidden" onChange={select} /><button type="button" onClick={() => inputRef.current?.click()} className="mt-3 min-h-11 rounded-lg border border-border-slate px-4 font-medium">Upload PDF or TXT</button>{file && <p className="mt-2 text-sm text-primary">Selected: {file.name}</p>}
+      <label className="mt-5 block text-sm font-semibold text-heading-navy">Job description (optional)<textarea value={jobDescription} onChange={(event) => setJobDescription(event.target.value)} maxLength={15000} rows={6} className="mt-2 w-full resize-y rounded-lg border border-border-slate p-4" /></label>
+      <label className="mt-4 flex items-start gap-3 rounded-lg bg-primary/5 p-4 text-sm"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} className="mt-1" /><span>I consent to sending this resume content to Gemini. Uploaded files are deleted after analysis.</span></label>
+      <button type="button" onClick={analyze} disabled={processing || !consent || (!file && !text.trim())} className="mt-5 inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-6 font-semibold text-on-primary disabled:opacity-50">{processing && <Loader2 className="h-4 w-4 animate-spin" />}{processing ? "Analyzing…" : "Analyze resume"}</button>{error && <p className="mt-3 text-sm font-medium text-error" role="alert">{error}</p>}
+    </section><section className="rounded-2xl border border-border-slate bg-surface-container-lowest p-6"><div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-heading-navy">Analysis</h2>{analysis && <button type="button" onClick={() => navigator.clipboard.writeText(analysis)} className="inline-flex min-h-11 items-center gap-2 rounded-lg px-3"><Copy className="h-4 w-4" /> Copy</button>}</div><div className="whitespace-pre-wrap leading-7 text-heading-navy" aria-live="polite">{analysis || <span className="text-on-surface-variant">Your analysis will appear here.</span>}</div></section></div>
+  </div></div>;
 };

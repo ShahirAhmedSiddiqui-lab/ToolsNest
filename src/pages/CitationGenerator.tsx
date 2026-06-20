@@ -1,65 +1,36 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { Quote, CheckCircle2 } from "lucide-react";
+import { FormEvent, useState } from "react";
+import { Check, Copy, Quote } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
+type Style = "APA" | "MLA" | "Chicago" | "IEEE";
+
+const citationFor = (style: Style, data: { author: string; title: string; publisher: string; year: string; url: string; accessed: string }) => {
+  const author = data.author.trim() || "Unknown author";
+  const title = data.title.trim();
+  const publisher = data.publisher.trim();
+  const year = data.year.trim() || "n.d.";
+  const url = data.url.trim();
+  const accessed = data.accessed ? new Date(`${data.accessed}T00:00:00`).toLocaleDateString(undefined, { year: "numeric", month: "long", day: "numeric" }) : "";
+  if (style === "APA") return `${author}. (${year}). ${title}.${publisher ? ` ${publisher}.` : ""}${url ? ` ${url}` : ""}`;
+  if (style === "MLA") return `${author}. “${title}.”${publisher ? ` ${publisher},` : ""} ${year}.${url ? ` ${url}.` : ""}${accessed ? ` Accessed ${accessed}.` : ""}`;
+  if (style === "Chicago") return `${author}. “${title}.”${publisher ? ` ${publisher}.` : ""} ${year}.${url ? ` ${url}.` : ""}`;
+  return `${author}, “${title},”${publisher ? ` ${publisher},` : ""} ${year}.${url ? ` [Online]. Available: ${url}.` : ""}${accessed ? ` [Accessed: ${accessed}].` : ""}`;
+};
+
 export const CitationGenerator = () => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [style, setStyle] = useState<Style>("APA");
+  const [form, setForm] = useState({ author: "", title: "", publisher: "", year: "", url: "", accessed: "" });
+  const [citation, setCitation] = useState("");
+  const [copied, setCopied] = useState(false);
+  const update = (name: keyof typeof form, value: string) => setForm((current) => ({ ...current, [name]: value }));
+  const submit = (event: FormEvent) => { event.preventDefault(); setCitation(citationFor(style, form)); setCopied(false); };
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    setTimeout(() => {
-      setResult("Successfully generated! This is a placeholder result.");
-      setIsProcessing(false);
-    }, 1500);
-  };
-
-  return (
-    <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12 flex flex-col">
-      <div className="max-w-4xl mx-auto w-full flex flex-col">
-        <Breadcrumbs />
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold text-heading-navy mb-2 flex items-center gap-3">
-            <div className="bg-primary/10 p-1.5 rounded-lg text-primary inline-flex">
-              <Quote className="w-6 h-6" />
-            </div>
-            Citation Generator
-          </h1>
-          <p className="text-on-surface-variant max-w-2xl">
-            Instantly format sources in APA, MLA, Chicago, and IEEE.
-          </p>
-        </div>
-
-        <div className="bg-surface-container-lowest border border-border-slate rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-6 md:p-8 border-b border-border-slate">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-heading-navy">Source URL or Title</label><input type="text" className="w-full bg-surface border border-border-slate rounded-lg px-4 py-2.5 text-base text-heading-navy outline-none focus:border-primary transition-colors" placeholder="Enter source url or title..." required /></div><div className="flex flex-col gap-2"><label className="text-sm font-semibold text-heading-navy">Author Name (Optional)</label><input type="text" className="w-full bg-surface border border-border-slate rounded-lg px-4 py-2.5 text-base text-heading-navy outline-none focus:border-primary transition-colors" placeholder="Enter author name (optional)..." required /></div>
-
-              <button 
-                type="submit"
-                disabled={isProcessing}
-                className="mt-2 bg-primary text-on-primary text-lg font-medium px-8 py-3.5 rounded-xl shadow-md hover:bg-primary-container transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-              >
-                {isProcessing ? "Processing..." : "Generate Citation"}
-              </button>
-            </form>
-          </div>
-
-          {/* Result Area */}
-          {result && (
-            <div className="p-6 md:p-8 bg-surface-container-low flex flex-col items-center justify-center text-center min-h-[200px]">
-              <div className="w-16 h-16 bg-success-teal/20 rounded-full flex items-center justify-center mb-4 text-success-teal">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-heading-navy mb-2">Success!</h3>
-              <p className="text-on-surface-variant max-w-md">{result}</p>
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
+  return <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12"><div className="max-w-4xl mx-auto"><Breadcrumbs />
+    <header className="mb-8"><h1 className="flex items-center gap-3 text-3xl font-bold text-heading-navy"><Quote className="h-8 w-8 text-primary" /> Citation Generator</h1><p className="mt-2 text-on-surface-variant">Format source details locally in four common citation styles.</p></header>
+    <div className="grid gap-6 lg:grid-cols-2"><form onSubmit={submit} className="space-y-4 rounded-2xl border border-border-slate bg-surface-container-lowest p-6">
+      <label className="block text-sm font-semibold">Style<select value={style} onChange={(event) => setStyle(event.target.value as Style)} className="mt-2 min-h-11 w-full rounded-lg border border-border-slate bg-surface px-3">{(["APA", "MLA", "Chicago", "IEEE"] as const).map((item) => <option key={item}>{item}</option>)}</select></label>
+      {([['author','Author or organization'],['title','Source title'],['publisher','Website, journal, or publisher'],['year','Publication year'],['url','URL'],['accessed','Access date']] as const).map(([name, label]) => <label key={name} className="block text-sm font-semibold">{label}{name === "title" && " *"}<input type={name === "accessed" ? "date" : name === "url" ? "url" : "text"} value={form[name]} onChange={(event) => update(name, event.target.value)} required={name === "title"} maxLength={name === "url" ? 2000 : 300} className="mt-2 min-h-11 w-full rounded-lg border border-border-slate bg-surface px-3" /></label>)}
+      <button type="submit" className="min-h-11 w-full rounded-lg bg-primary px-5 font-semibold text-on-primary">Generate citation</button>
+    </form><section className="rounded-2xl border border-border-slate bg-surface-container-lowest p-6"><h2 className="text-lg font-bold text-heading-navy">Formatted citation</h2>{citation ? <><p className="mt-5 rounded-lg bg-surface-container-low p-5 leading-7 text-heading-navy" aria-live="polite">{citation}</p><button type="button" onClick={async () => { await navigator.clipboard.writeText(citation); setCopied(true); }} className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-border-slate px-4">{copied ? <Check className="h-4 w-4 text-success-teal" /> : <Copy className="h-4 w-4" />}{copied ? "Copied" : "Copy citation"}</button></> : <p className="mt-5 text-on-surface-variant">Enter the source details to generate a citation.</p>}</section></div>
+  </div></div>;
 };

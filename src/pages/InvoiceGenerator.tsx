@@ -1,65 +1,24 @@
-import { useState } from "react";
-import type { FormEvent } from "react";
-import { FileText, CheckCircle2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { FileText, Plus, Printer, Trash2 } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
+type Item = { id: number; description: string; quantity: number; rate: number };
+const money = (value: number, currency: string) => new Intl.NumberFormat(undefined, { style: "currency", currency }).format(value || 0);
+
 export const InvoiceGenerator = () => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<string | null>(null);
+  const [details, setDetails] = useState({ business: "", client: "", number: "INV-001", issueDate: new Date().toISOString().slice(0, 10), dueDate: "", currency: "USD", tax: 0, notes: "" });
+  const [items, setItems] = useState<Item[]>([{ id: 1, description: "", quantity: 1, rate: 0 }]);
+  const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.quantity * item.rate, 0), [items]);
+  const total = subtotal + subtotal * (details.tax / 100);
+  const updateItem = (id: number, patch: Partial<Item>) => setItems((current) => current.map((item) => item.id === id ? { ...item, ...patch } : item));
 
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    setIsProcessing(true);
-    setTimeout(() => {
-      setResult("Successfully generated! This is a placeholder result.");
-      setIsProcessing(false);
-    }, 1500);
-  };
-
-  return (
-    <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12 flex flex-col">
-      <div className="max-w-4xl mx-auto w-full flex flex-col">
-        <Breadcrumbs />
-        <div className="mb-10">
-          <h1 className="text-3xl font-bold text-heading-navy mb-2 flex items-center gap-3">
-            <div className="bg-primary/10 p-1.5 rounded-lg text-primary inline-flex">
-              <FileText className="w-6 h-6" />
-            </div>
-            Invoice Generator
-          </h1>
-          <p className="text-on-surface-variant max-w-2xl">
-            Create professional invoices instantly.
-          </p>
-        </div>
-
-        <div className="bg-surface-container-lowest border border-border-slate rounded-2xl overflow-hidden shadow-sm">
-          <div className="p-6 md:p-8 border-b border-border-slate">
-            <form onSubmit={handleSubmit} className="flex flex-col gap-6">
-              <div className="flex flex-col gap-2"><label className="text-sm font-semibold text-heading-navy">Client Name</label><input type="text" className="w-full bg-surface border border-border-slate rounded-lg px-4 py-2.5 text-base text-heading-navy outline-none focus:border-primary transition-colors" placeholder="Enter client name..." required /></div><div className="flex flex-col gap-2"><label className="text-sm font-semibold text-heading-navy">Total Amount ($)</label><input type="number" className="w-full bg-surface border border-border-slate rounded-lg px-4 py-2.5 text-base text-heading-navy outline-none focus:border-primary transition-colors" placeholder="Enter total amount ($)..." required /></div>
-
-              <button 
-                type="submit"
-                disabled={isProcessing}
-                className="mt-2 bg-primary text-on-primary text-lg font-medium px-8 py-3.5 rounded-xl shadow-md hover:bg-primary-container transition-all flex items-center justify-center gap-2 disabled:opacity-70"
-              >
-                {isProcessing ? "Processing..." : "Generate Invoice"}
-              </button>
-            </form>
-          </div>
-
-          {/* Result Area */}
-          {result && (
-            <div className="p-6 md:p-8 bg-surface-container-low flex flex-col items-center justify-center text-center min-h-[200px]">
-              <div className="w-16 h-16 bg-success-teal/20 rounded-full flex items-center justify-center mb-4 text-success-teal">
-                <CheckCircle2 className="w-8 h-8" />
-              </div>
-              <h3 className="text-xl font-bold text-heading-navy mb-2">Success!</h3>
-              <p className="text-on-surface-variant max-w-md">{result}</p>
-            </div>
-          )}
-        </div>
-
-      </div>
-    </div>
-  );
+  return <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12"><div className="max-w-6xl mx-auto"><Breadcrumbs />
+    <header className="mb-8"><h1 className="flex items-center gap-3 text-3xl font-bold text-heading-navy"><FileText className="h-8 w-8 text-primary" /> Invoice Generator</h1><p className="mt-2 text-on-surface-variant">Create and print an invoice without uploading business data.</p></header>
+    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]"><section className="space-y-5 rounded-2xl border border-border-slate bg-surface-container-lowest p-6">
+      <div className="grid gap-4 sm:grid-cols-2">{([['business','Your business'],['client','Bill to'],['number','Invoice number'],['issueDate','Issue date'],['dueDate','Due date']] as const).map(([name,label]) => <label key={name} className="text-sm font-semibold">{label}<input type={name.toLowerCase().includes('date') ? 'date' : 'text'} value={details[name]} onChange={(event) => setDetails({ ...details, [name]: event.target.value })} className="mt-2 min-h-11 w-full rounded-lg border border-border-slate px-3" /></label>)}<label className="text-sm font-semibold">Currency<select value={details.currency} onChange={(event) => setDetails({ ...details, currency: event.target.value })} className="mt-2 min-h-11 w-full rounded-lg border border-border-slate px-3"><option>USD</option><option>EUR</option><option>GBP</option><option>PKR</option><option>INR</option></select></label></div>
+      <div><h2 className="font-bold text-heading-navy">Line items</h2>{items.map((item) => <div key={item.id} className="mt-3 grid grid-cols-[1fr_72px_100px_44px] gap-2"><input aria-label="Item description" placeholder="Description" value={item.description} onChange={(event) => updateItem(item.id, { description: event.target.value })} className="min-h-11 rounded-lg border border-border-slate px-3" /><input aria-label="Quantity" type="number" min="0" step="1" value={item.quantity} onChange={(event) => updateItem(item.id, { quantity: Number(event.target.value) })} className="min-h-11 rounded-lg border border-border-slate px-2" /><input aria-label="Rate" type="number" min="0" step="0.01" value={item.rate} onChange={(event) => updateItem(item.id, { rate: Number(event.target.value) })} className="min-h-11 rounded-lg border border-border-slate px-2" /><button type="button" aria-label="Remove line item" onClick={() => setItems((current) => current.filter((candidate) => candidate.id !== item.id))} disabled={items.length === 1} className="flex min-h-11 items-center justify-center rounded-lg text-error disabled:opacity-30"><Trash2 className="h-4 w-4" /></button></div>)}<button type="button" onClick={() => setItems((current) => [...current, { id: Date.now(), description: "", quantity: 1, rate: 0 }])} className="mt-3 inline-flex min-h-11 items-center gap-2 rounded-lg border border-border-slate px-4"><Plus className="h-4 w-4" /> Add item</button></div>
+      <div className="grid gap-4 sm:grid-cols-2"><label className="text-sm font-semibold">Tax percentage<input type="number" min="0" max="100" value={details.tax} onChange={(event) => setDetails({ ...details, tax: Number(event.target.value) })} className="mt-2 min-h-11 w-full rounded-lg border border-border-slate px-3" /></label><label className="text-sm font-semibold">Notes<textarea value={details.notes} onChange={(event) => setDetails({ ...details, notes: event.target.value })} className="mt-2 w-full rounded-lg border border-border-slate p-3" rows={3} /></label></div>
+      <button type="button" onClick={() => window.print()} className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-primary px-6 font-semibold text-on-primary"><Printer className="h-4 w-4" /> Print or save PDF</button>
+    </section><article data-print-root className="rounded-2xl border border-border-slate bg-white p-8 text-slate-900 shadow-sm"><div className="flex items-start justify-between gap-6"><div><p className="text-2xl font-bold">{details.business || "Your business"}</p><p className="mt-8 text-xs uppercase tracking-wider text-slate-500">Bill to</p><p className="font-semibold">{details.client || "Client name"}</p></div><div className="text-right"><h2 className="text-3xl font-bold text-blue-700">INVOICE</h2><p className="mt-2">{details.number}</p><p className="mt-4 text-sm">Issued: {details.issueDate || "—"}</p><p className="text-sm">Due: {details.dueDate || "—"}</p></div></div><table className="mt-10 w-full text-left text-sm"><thead><tr className="border-b-2 border-slate-800"><th className="py-3">Description</th><th className="py-3 text-right">Qty</th><th className="py-3 text-right">Rate</th><th className="py-3 text-right">Amount</th></tr></thead><tbody>{items.map((item) => <tr key={item.id} className="border-b border-slate-200"><td className="py-3">{item.description || "Item"}</td><td className="py-3 text-right">{item.quantity}</td><td className="py-3 text-right">{money(item.rate, details.currency)}</td><td className="py-3 text-right">{money(item.quantity * item.rate, details.currency)}</td></tr>)}</tbody></table><div className="ml-auto mt-6 max-w-xs space-y-2 text-sm"><div className="flex justify-between"><span>Subtotal</span><span>{money(subtotal, details.currency)}</span></div><div className="flex justify-between"><span>Tax ({details.tax}%)</span><span>{money(subtotal * details.tax / 100, details.currency)}</span></div><div className="flex justify-between border-t border-slate-800 pt-3 text-lg font-bold"><span>Total</span><span>{money(total, details.currency)}</span></div></div>{details.notes && <div className="mt-10 border-t border-slate-200 pt-4 text-sm"><strong>Notes</strong><p className="mt-1 whitespace-pre-wrap">{details.notes}</p></div>}</article></div>
+  </div></div>;
 };
