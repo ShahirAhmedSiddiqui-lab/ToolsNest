@@ -1,7 +1,7 @@
 import type { ComponentType, LazyExoticComponent } from "react";
 import { lazy } from "react";
 import type { LucideIcon } from "lucide-react";
-import { Activity, Brain, Briefcase, Code, FileText, GraduationCap, Image as ImageIcon } from "lucide-react";
+import { Activity, Brain, Briefcase, Code, FileMinus2, FileText, GraduationCap, Image as ImageIcon, RotateCw, Stamp } from "lucide-react";
 
 export type ToolCategory =
   | "PDF Tools"
@@ -35,6 +35,9 @@ export const tools: ToolDefinition[] = [
   { id: "compress-pdf", category: "PDF Tools", name: "Compress PDF", path: "/pdf-tools/compress-pdf", description: "Reduce PDF file size locally.", execution: "local", icon: FileText, component: page(() => import("../pages/CompressPDF"), "CompressPDF") },
   { id: "merge-pdf", category: "PDF Tools", name: "Merge PDF", path: "/pdf-tools/merge-pdf", description: "Combine multiple PDFs.", execution: "local", icon: FileText, component: page(() => import("../pages/MergePDF"), "MergePDF") },
   { id: "split-pdf", category: "PDF Tools", name: "Split PDF", path: "/pdf-tools/split-pdf", description: "Extract or divide PDF pages.", execution: "local", icon: FileText, component: page(() => import("../pages/SplitPDF"), "SplitPDF") },
+  { id: "rotate-pdf", category: "PDF Tools", name: "Rotate PDF", path: "/pdf-tools/rotate-pdf", description: "Rotate all or selected PDF pages.", execution: "local", icon: RotateCw, component: page(() => import("../pages/RotatePDF"), "RotatePDF") },
+  { id: "delete-pdf-pages", category: "PDF Tools", name: "Delete PDF Pages", path: "/pdf-tools/delete-pages", description: "Remove selected pages from a PDF.", execution: "local", icon: FileMinus2, component: page(() => import("../pages/DeletePDFPages"), "DeletePDFPages") },
+  { id: "watermark-pdf", category: "PDF Tools", name: "Add Watermark", path: "/pdf-tools/watermark", description: "Add a professional text watermark.", execution: "local", icon: Stamp, component: page(() => import("../pages/WatermarkPDF"), "WatermarkPDF") },
   { id: "jpg-to-pdf", category: "PDF Tools", name: "JPG to PDF", path: "/pdf-tools/jpg-to-pdf", description: "Convert images to a PDF.", execution: "local", icon: FileText, component: page(() => import("../pages/JPGToPDF"), "JPGToPDF") },
   { id: "pdf-to-jpg", category: "PDF Tools", name: "PDF to JPG", path: "/pdf-tools/pdf-to-jpg", description: "Render PDF pages as JPG images.", execution: "local", icon: FileText, component: page(() => import("../pages/PDFToJPG"), "PDFToJPG") },
   { id: "pdf-to-ppt", category: "PDF Tools", name: "PDF to PPT", path: "/pdf-tools/pdf-to-ppt", description: "Create a basic PowerPoint from a PDF.", execution: "local", icon: FileText, component: page(() => import("../pages/PDFToPPT"), "PDFToPPT") },

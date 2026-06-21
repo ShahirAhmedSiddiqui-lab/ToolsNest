@@ -23,6 +23,11 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
     ranges: "1",
     fixedRange: 2,
     jpgQuality: 90,
+    rotation: 90,
+    pageSelection: "all",
+    selectedPages: "1",
+    removePages: "1",
+    watermarkText: "CONFIDENTIAL",
   });
   const [pageCount, setPageCount] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -37,7 +42,7 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
     setResult(null);
     setError(validateFiles(tool, next));
     setPageCount(null);
-    if (tool === "split-pdf" && next.length === 1) {
+    if (["split-pdf", "rotate-pdf", "delete-pdf-pages"].includes(tool) && next.length === 1) {
       try {
         setPageCount(await getPdfPageCount(next[0]));
       } catch {
@@ -92,11 +97,28 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
       <p className="text-on-surface-variant mb-8">Drag & Drop or click to browse</p>
 
       {tool === "compress-pdf" && (
-        <select className="mb-4 bg-surface-container-low border border-border-slate rounded-lg px-4 py-2 text-sm" value={options.compression} onChange={(event) => setOptions({ ...options, compression: event.target.value as PdfToolOptions["compression"] })}>
-          <option value="low">Low compression</option>
-          <option value="medium">Medium compression</option>
-          <option value="high">High compression</option>
-        </select>
+        <div className="mb-4 flex flex-col items-center gap-2"><select aria-label="Compression level" className="bg-surface-container-low border border-border-slate rounded-lg px-4 py-2 text-sm" value={options.compression} onChange={(event) => setOptions({ ...options, compression: event.target.value as PdfToolOptions["compression"] })}>
+          <option value="low">Low compression</option><option value="medium">Medium compression</option><option value="high">High compression</option>
+        </select><p className="text-xs text-on-surface-variant">Low keeps original quality, medium balances savings and clarity, and high only rasterizes when it produces a meaningful size win.</p></div>
+      )}
+
+      {tool === "rotate-pdf" && (
+        <div className="mb-4 flex max-w-xl flex-col items-center gap-3">
+          {pageCount && <p className="text-sm font-medium text-primary">Total pages: {pageCount}</p>}
+          <label className="text-sm font-semibold text-heading-navy">Rotation
+            <select value={options.rotation} onChange={(event) => setOptions({ ...options, rotation: Number(event.target.value) as 90 | 180 | 270 })} className="ml-3 min-h-11 rounded-lg border border-border-slate bg-surface px-3"><option value={90}>90°</option><option value={180}>180°</option><option value={270}>270°</option></select>
+          </label>
+          <div className="flex gap-4 text-sm"><label><input type="radio" name="page-selection" checked={options.pageSelection === "all"} onChange={() => setOptions({ ...options, pageSelection: "all" })} /> All pages</label><label><input type="radio" name="page-selection" checked={options.pageSelection === "selected"} onChange={() => setOptions({ ...options, pageSelection: "selected" })} /> Selected pages</label></div>
+          {options.pageSelection === "selected" && <label className="text-sm font-semibold">Pages<input value={options.selectedPages} onChange={(event) => setOptions({ ...options, selectedPages: event.target.value })} placeholder="1,3-5" className="ml-3 min-h-11 w-44 rounded-lg border border-border-slate px-3" /></label>}
+        </div>
+      )}
+
+      {tool === "delete-pdf-pages" && (
+        <div className="mb-4 flex flex-col items-center gap-3">{pageCount && <><p className="text-sm font-medium text-primary">Total pages: {pageCount}</p><div className="flex max-w-lg flex-wrap justify-center gap-1.5" aria-label={`Available pages 1 through ${pageCount}`}>{Array.from({ length: Math.min(pageCount, 60) }, (_, index) => <span key={index} className="flex h-7 min-w-7 items-center justify-center rounded border border-border-slate bg-surface px-1 text-xs">{index + 1}</span>)}{pageCount > 60 && <span className="px-2 text-sm text-on-surface-variant">… {pageCount}</span>}</div></>}<label className="text-sm font-semibold text-heading-navy">Pages to remove<input value={options.removePages} onChange={(event) => setOptions({ ...options, removePages: event.target.value })} placeholder="2,4-6" className="ml-3 min-h-11 w-44 rounded-lg border border-border-slate px-3" /></label><p className="text-xs text-on-surface-variant">Use commas and ranges, for example 2,4-6.</p></div>
+      )}
+
+      {tool === "watermark-pdf" && (
+        <label className="mb-4 w-full max-w-md text-left text-sm font-semibold text-heading-navy">Watermark text<input value={options.watermarkText} maxLength={80} onChange={(event) => setOptions({ ...options, watermarkText: event.target.value })} className="mt-2 min-h-11 w-full rounded-lg border border-border-slate px-3" /></label>
       )}
 
       {tool === "jpg-to-pdf" && (
@@ -153,7 +175,7 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
         )}
       </div>
 
-      {error && <p className="mt-5 text-sm font-medium text-red-600">{error}</p>}
+      {error && <p className="mt-5 text-sm font-medium text-red-600" role="alert">{error}</p>}
 
       {result && (
         <div className="mt-6 bg-surface-container-low rounded-xl p-4 w-full max-w-md">

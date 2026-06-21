@@ -1,6 +1,6 @@
 # ToolsNest
 
-ToolsNest is a Vite, React, and TypeScript toolbox designed for a single Vercel deployment. Deterministic PDF, image, calculator, document, and developer tools run in the browser. AI tools use narrowly scoped Vercel Functions so the Gemini key never enters the client bundle.
+ToolsNest is a Vite, React, and TypeScript toolbox designed for a single Vercel deployment. Most PDF, image, calculator, document, and developer tools run in the browser. PDF compression and AI use narrowly scoped Vercel Functions.
 
 ## Architecture
 
@@ -18,6 +18,8 @@ Vercel Functions
 
 - PDF structure: `pdf-lib`
 - PDF rendering and text extraction: PDF.js worker
+- Serverless image-aware compression: Sharp with a `pdf-lib` structural fallback
+- Downloads: FileSaver.js
 - DOCX/PPTX packaging: JSZip and minimal Open XML writers
 - Image processing: Canvas and browser image APIs
 - AI: Gemini REST API through same-project Vercel Functions
@@ -32,7 +34,7 @@ npm install
 npm run dev
 ```
 
-The local Vite server does not emulate Vercel Functions. To exercise AI endpoints locally, install the Vercel CLI and run:
+The local Vite server does not emulate Vercel Functions. To exercise compression or AI endpoints locally, install the Vercel CLI and run:
 
 ```bash
 vercel dev
@@ -48,7 +50,7 @@ npm run test
 npm run build
 ```
 
-Tests cover the tool registry, file validation, local PDF merging, DOCX/PPTX package creation, and AI boundary validation.
+Tests cover the tool registry, file validation, merge/rotate/delete/watermark operations, serverless compression, DOCX/PPTX package creation, and AI boundary validation.
 
 ## Deployment
 
@@ -59,7 +61,7 @@ Tests cover the tool registry, file validation, local PDF merging, DOCX/PPTX pac
 
 ## Privacy behavior
 
-- PDF conversion, image processing, calculators, invoice/resume creation, citations, QR codes, and text utilities are local.
+- PDF editing/conversion, image processing, calculators, invoice/resume creation, citations, QR codes, and text utilities are local. PDF compression sends the selected PDF to the same Vercel deployment for temporary in-memory processing.
 - Text AI inputs are sent to Gemini only after the user invokes an AI action.
 - PDF summarizer, Chat with PDF, and Resume Analyzer show an explicit consent control before a file is sent directly to Gemini.
 - One-shot AI files are deleted after the response. Chat files remain only for the active session and are deleted when the session ends; provider-side expiry is the final fallback.

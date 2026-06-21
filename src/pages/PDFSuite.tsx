@@ -1,4 +1,4 @@
-import { ShieldAlert, FileOutput, FileInput, Minimize, Layers, Split, Lock, FileText, ArrowRight } from "lucide-react";
+import { ShieldAlert, FileOutput, FileInput, Minimize, Layers, Split, FileText, ArrowRight, RotateCw, FileMinus2, Stamp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
@@ -12,7 +12,7 @@ export const PDFSuite = () => {
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-heading-navy mb-2">PDF Suite</h1>
             <p className="text-lg text-on-surface-variant max-w-2xl">
-              Professional PDF manipulation tools. Process documents securely directly in your browser without uploading to external servers.
+              Lightweight PDF tools for the browser. Only compression uses a same-project serverless function.
             </p>
           </div>
           <div className="flex items-center gap-2 bg-success-teal/10 px-4 py-2 rounded-full border border-success-teal/20 w-fit">
@@ -32,7 +32,7 @@ export const PDFSuite = () => {
             </div>
             <h2 className="text-2xl font-semibold text-heading-navy mb-2">PDF to Word Converter</h2>
             <p className="text-base text-on-surface-variant mb-6">
-              Convert your PDF documents into editable Word files with high accuracy. Formatting, tables, and images are preserved.
+              Extract readable PDF text into a lightweight editable Word document. Complex layouts may be simplified.
             </p>
             <Link to="/pdf-tools/pdf-to-word" className="text-sm font-medium text-on-primary bg-primary px-6 py-3 rounded-lg hover:bg-primary-container transition-colors shadow-sm inline-flex items-center gap-2">
               Try Converter <ArrowRight className="w-4 h-4" />
@@ -54,6 +54,9 @@ export const PDFSuite = () => {
           { title: "Compress PDF", desc: "Reduce file size while maintaining quality.", icon: Minimize, tags: ["Optimization"], href: "/pdf-tools/compress-pdf" },
           { title: "Merge PDF", desc: "Combine multiple PDFs into a single document.", icon: Layers, tags: ["Utility"], href: "/pdf-tools/merge-pdf" },
           { title: "Split PDF", desc: "Extract pages or separate PDFs into multiple files.", icon: Split, tags: ["Utility"], href: "/pdf-tools/split-pdf" },
+          { title: "Rotate PDF", desc: "Rotate all or selected pages by 90°, 180°, or 270°.", icon: RotateCw, tags: ["Local"], href: "/pdf-tools/rotate-pdf" },
+          { title: "Delete Pages", desc: "Remove selected pages from a PDF locally.", icon: FileMinus2, tags: ["Local"], href: "/pdf-tools/delete-pages" },
+          { title: "Add Watermark", desc: "Apply a subtle diagonal text watermark.", icon: Stamp, tags: ["Local"], href: "/pdf-tools/watermark" },
           { title: "JPG to PDF", desc: "Convert images to PDF documents quickly.", icon: FileInput, tags: ["Utility"], href: "/pdf-tools/jpg-to-pdf" },
           { title: "PDF to JPG", desc: "Convert PDF pages into high-quality JPG images.", icon: FileOutput, tags: ["Utility"], href: "/pdf-tools/pdf-to-jpg" },
           { title: "PDF to PPT", desc: "Convert PDFs to editable PowerPoint presentations.", icon: FileOutput, tags: ["Utility"], href: "/pdf-tools/pdf-to-ppt" },

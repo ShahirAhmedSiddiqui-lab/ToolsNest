@@ -1,3 +1,5 @@
+import saveAs from "file-saver";
+
 export type PdfToolId =
   | "pdf-to-word"
   | "word-to-pdf"
@@ -5,6 +7,9 @@ export type PdfToolId =
   | "merge-pdf"
   | "jpg-to-pdf"
   | "split-pdf"
+  | "rotate-pdf"
+  | "delete-pdf-pages"
+  | "watermark-pdf"
   | "pdf-to-jpg"
   | "pdf-to-ppt";
 
@@ -16,6 +21,11 @@ export type PdfToolOptions = {
   ranges?: string;
   fixedRange?: number;
   jpgQuality?: number;
+  rotation?: 90 | 180 | 270;
+  pageSelection?: "all" | "selected";
+  selectedPages?: string;
+  removePages?: string;
+  watermarkText?: string;
 };
 
 export type ToolResult = { fileName: string; blob: Blob; details: string[] };
@@ -41,7 +51,7 @@ export const validateFiles = (tool: PdfToolId, files: File[]) => {
   if (tooLarge) return `${tooLarge.name} exceeds the 20 MB local-processing limit.`;
   if (files.reduce((total, file) => total + file.size, 0) > TOTAL_LIMIT) return "Selected files exceed the 40 MB combined limit.";
 
-  if (["pdf-to-word", "compress-pdf", "split-pdf", "pdf-to-jpg", "pdf-to-ppt"].includes(tool)) {
+  if (["pdf-to-word", "compress-pdf", "split-pdf", "rotate-pdf", "delete-pdf-pages", "watermark-pdf", "pdf-to-jpg", "pdf-to-ppt"].includes(tool)) {
     return files.length === 1 && isPdf(files[0]) ? "" : "Please select one valid PDF file.";
   }
   if (tool === "merge-pdf") return files.length >= 2 && files.every(isPdf) ? "" : "Please select at least two valid PDF files.";
@@ -165,6 +175,86 @@ const createPptx = async (pages: string[]) => {
 
 export const documentPackageWriters = { createDocx, createPptx };
 
+const COMPRESSION_PROFILES = {
+  low: {
+    allowRaster: false,
+    structuralSavingsFloor: 0.02,
+    rasterSavingsFloor: 1,
+    quality: 0.82,
+    scale: 1.35,
+    label: "Low compression",
+  },
+  medium: {
+    allowRaster: true,
+    structuralSavingsFloor: 0.01,
+    rasterSavingsFloor: 0.2,
+    quality: 0.7,
+    scale: 1.1,
+    label: "Medium compression",
+  },
+  high: {
+    allowRaster: true,
+    structuralSavingsFloor: 0.005,
+    rasterSavingsFloor: 0.12,
+    quality: 0.58,
+    scale: 0.95,
+    label: "High compression",
+  },
+} as const;
+
+const compressPdfLocally = async (file: File, level: PdfToolOptions["compression"] = "medium") => {
+  const { PDFDocument } = await import("pdf-lib");
+  const sourceBytes = await file.arrayBuffer();
+  const source = await PDFDocument.load(sourceBytes, { updateMetadata: false });
+  const profile = COMPRESSION_PROFILES[level];
+  const originalSize = file.size;
+
+  const structuralBytes = await source.save({ useObjectStreams: true, addDefaultPage: false });
+  let best: { blob: Blob; mode: string; details: string[] } = {
+    blob: file,
+    mode: "original",
+    details: [`${profile.label}: your PDF is already near its smallest size`],
+  };
+
+  const structuralBlob = new Blob([structuralBytes], { type: "application/pdf" });
+  const structuralSavings = (originalSize - structuralBlob.size) / originalSize;
+  if (structuralBlob.size < originalSize && structuralSavings >= profile.structuralSavingsFloor) {
+    best = {
+      blob: structuralBlob,
+      mode: "local-structural",
+      details: [`${profile.label}: preserved text and vector quality`],
+    };
+  }
+
+  if (profile.allowRaster && source.getPageCount() <= RASTER_PAGE_LIMIT) {
+    try {
+      const renderedPages = await renderPdfPages(file, profile.quality, profile.scale);
+      const rasterOutput = await PDFDocument.create();
+
+      for (let index = 0; index < renderedPages.length; index += 1) {
+        const jpg = await rasterOutput.embedJpg(await renderedPages[index].blob.arrayBuffer());
+        const originalPage = source.getPage(index);
+        const page = rasterOutput.addPage([originalPage.getWidth(), originalPage.getHeight()]);
+        page.drawImage(jpg, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
+      }
+
+      const rasterBlob = new Blob([await rasterOutput.save({ useObjectStreams: true })], { type: "application/pdf" });
+      const rasterSavings = (originalSize - rasterBlob.size) / originalSize;
+      if (rasterBlob.size < best.blob.size && rasterBlob.size < originalSize && rasterSavings >= profile.rasterSavingsFloor) {
+        best = {
+          blob: rasterBlob,
+          mode: "local-image-raster",
+          details: [`${profile.label}: strongest size reduction`, "Searchable text may be flattened"],
+        };
+      }
+    } catch {
+      // Keep the structural result when raster rendering is unavailable.
+    }
+  }
+
+  return best;
+};
+
 const extractDocxText = async (file: File) => {
   const { default: JSZip } = await import("jszip");
   const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -236,11 +326,17 @@ export const processPdfTool = async (tool: PdfToolId, files: File[], options: Pd
 
   if (tool === "jpg-to-pdf") {
     const output = await PDFDocument.create();
+    const portrait = options.pageSize === "Letter" ? [612, 792] : [595.28, 841.89];
+    const dimensions = options.orientation === "landscape" ? [portrait[1], portrait[0]] : portrait;
     for (const file of files) {
       const bytes = await file.arrayBuffer();
       const image = ext(file) === "png" ? await output.embedPng(bytes) : await output.embedJpg(bytes);
-      const page = output.addPage([image.width, image.height]);
-      page.drawImage(image, { x: 0, y: 0, width: image.width, height: image.height });
+      const page = output.addPage(dimensions as [number, number]);
+      const margin = 24;
+      const scale = Math.min((page.getWidth() - margin * 2) / image.width, (page.getHeight() - margin * 2) / image.height);
+      const width = image.width * scale;
+      const height = image.height * scale;
+      page.drawImage(image, { x: (page.getWidth() - width) / 2, y: (page.getHeight() - height) / 2, width, height });
     }
     const blob = new Blob([await output.save()], { type: "application/pdf" });
     return { fileName: "images.pdf", blob, details: [`Converted ${files.length} images`, `Output size: ${formatBytes(blob.size)}`] };
@@ -257,16 +353,74 @@ export const processPdfTool = async (tool: PdfToolId, files: File[], options: Pd
   }
 
   if (tool === "compress-pdf") {
-    const settings = { low: { quality: 0.82, scale: 1.5 }, medium: { quality: 0.65, scale: 1.25 }, high: { quality: 0.45, scale: 1 } }[options.compression ?? "medium"];
-    const pages = await renderPdfPages(files[0], settings.quality, settings.scale);
-    const output = await PDFDocument.create();
-    for (const rendered of pages) {
-      const image = await output.embedJpg(await rendered.blob.arrayBuffer());
-      const page = output.addPage([rendered.width, rendered.height]);
-      page.drawImage(image, { x: 0, y: 0, width: rendered.width, height: rendered.height });
+    const compression = options.compression ?? "medium";
+    const originalSize = files[0].size;
+
+    if (files[0].size <= 4 * MB) {
+      try {
+        const response = await fetch(`/api/compress-pdf?level=${compression}`, { method: "POST", headers: { "Content-Type": "application/pdf", "X-File-Name": encodeURIComponent(files[0].name) }, body: files[0] });
+        if (response.ok && String(response.headers.get("content-type") ?? "").toLowerCase().includes("application/pdf")) {
+          const blob = await response.blob();
+          const mode = response.headers.get("X-Compression-Mode") ?? "optimized";
+          if (blob.size < originalSize) {
+            return { fileName: `${stem(files[0].name)}-compressed.pdf`, blob, details: [`Serverless ${mode} compression`, `Reduced from ${formatBytes(originalSize)} to ${formatBytes(blob.size)}`] };
+          }
+        }
+      } catch {
+        // Fall back to local compression when the serverless route is unavailable.
+      }
     }
-    const blob = new Blob([await output.save({ useObjectStreams: true })], { type: "application/pdf" });
-    return { fileName: `${stem(files[0].name)}-compressed.pdf`, blob, details: ["Visual compression flattens searchable text", `Reduced from ${formatBytes(files[0].size)} to ${formatBytes(blob.size)}`] };
+
+    const local = await compressPdfLocally(files[0], compression);
+    return {
+      fileName: `${stem(files[0].name)}-compressed.pdf`,
+      blob: local.blob,
+      details: local.blob.size < originalSize
+        ? [...local.details, `Reduced from ${formatBytes(originalSize)} to ${formatBytes(local.blob.size)}`]
+        : [...local.details, `Size stayed at ${formatBytes(originalSize)} because further compression would hurt quality or increase the file size`],
+    };
+  }
+
+  if (tool === "rotate-pdf") {
+    const { degrees } = await import("pdf-lib");
+    const output = await PDFDocument.load(await files[0].arrayBuffer());
+    const targets = options.pageSelection === "selected"
+      ? parsePageSelection(output.getPageCount(), { splitMode: "selected", ranges: options.selectedPages ?? "1" })[0]
+      : output.getPageIndices();
+    const rotation = options.rotation ?? 90;
+    targets.forEach((index) => {
+      const page = output.getPage(index);
+      page.setRotation(degrees((page.getRotation().angle + rotation) % 360));
+    });
+    const blob = new Blob([await output.save()], { type: "application/pdf" });
+    return { fileName: `${stem(files[0].name)}-rotated.pdf`, blob, details: [`Rotated ${targets.length} page${targets.length === 1 ? "" : "s"} by ${rotation}°`, `Output size: ${formatBytes(blob.size)}`] };
+  }
+
+  if (tool === "delete-pdf-pages") {
+    const source = await PDFDocument.load(await files[0].arrayBuffer());
+    const remove = new Set(parsePageSelection(source.getPageCount(), { splitMode: "selected", ranges: options.removePages ?? "" })[0]);
+    const keep = source.getPageIndices().filter((index) => !remove.has(index));
+    if (!keep.length) throw new Error("You cannot remove every page from the PDF.");
+    const output = await PDFDocument.create();
+    const copied = await output.copyPages(source, keep);
+    copied.forEach((page) => output.addPage(page));
+    const blob = new Blob([await output.save()], { type: "application/pdf" });
+    return { fileName: `${stem(files[0].name)}-pages-removed.pdf`, blob, details: [`Removed ${remove.size} page${remove.size === 1 ? "" : "s"}`, `Output size: ${formatBytes(blob.size)}`] };
+  }
+
+  if (tool === "watermark-pdf") {
+    const { degrees, rgb, StandardFonts } = await import("pdf-lib");
+    const text = options.watermarkText?.trim().slice(0, 80);
+    if (!text) throw new Error("Enter watermark text before processing.");
+    const output = await PDFDocument.load(await files[0].arrayBuffer());
+    const font = await output.embedFont(StandardFonts.HelveticaBold);
+    output.getPages().forEach((page) => {
+      const size = Math.max(38, Math.min(84, Math.min(page.getWidth(), page.getHeight()) / 7));
+      const width = font.widthOfTextAtSize(text, size);
+      page.drawText(text, { x: (page.getWidth() - width) / 2, y: page.getHeight() / 2, size, font, color: rgb(0.35, 0.4, 0.48), opacity: 0.18, rotate: degrees(35) });
+    });
+    const blob = new Blob([await output.save()], { type: "application/pdf" });
+    return { fileName: `${stem(files[0].name)}-watermarked.pdf`, blob, details: [`Applied watermark to ${output.getPageCount()} pages`, `Output size: ${formatBytes(blob.size)}`] };
   }
 
   if (tool === "pdf-to-word") {
@@ -296,10 +450,5 @@ export const getPdfPageCount = async (file: File) => {
 };
 
 export const downloadBlob = (result: ToolResult) => {
-  const url = URL.createObjectURL(result.blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = result.fileName;
-  link.click();
-  window.setTimeout(() => URL.revokeObjectURL(url), 1_000);
+  saveAs(result.blob, result.fileName);
 };

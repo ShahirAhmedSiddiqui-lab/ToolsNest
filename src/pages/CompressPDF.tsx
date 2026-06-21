@@ -14,7 +14,7 @@ export const CompressPDF = () => {
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-heading-navy mb-4">Compress PDF</h1>
           <p className="text-lg text-on-surface-variant max-w-2xl">
-            Reduce PDF file size without losing quality.
+            Reduce PDF size without shipping a worse file. The tool keeps vector quality when possible and only uses visual raster compression when it produces a meaningful size reduction.
           </p>
         </div>
 
