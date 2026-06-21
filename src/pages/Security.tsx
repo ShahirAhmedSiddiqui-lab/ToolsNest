@@ -3,7 +3,7 @@ import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const practices = [
   [Lock, "Local by default", "PDF editing and conversion, image processing, calculators, document builders, and developer tools execute inside your browser."],
-  [Cloud, "Explicit AI boundary", "AI document tools disclose when data will be sent to Gemini and require consent before a file upload."],
+  [Cloud, "Explicit AI boundary", "AI document tools extract text locally first and send only the bounded text needed for the request."],
   [Database, "No application storage", "ToolsNest has no database or persistent file store. Compression uses temporary function memory, local buffers are released after use, and remote AI files are deleted by the application."],
   [CheckCircle, "Protected credentials", "The Gemini key exists only in Vercel Functions. It is never exposed through a VITE_ environment variable or browser bundle."],
 ] as const;

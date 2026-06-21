@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { Calendar, Copy, CheckCircle2, Trash2, AlertCircle } from "lucide-react";
+import { Calendar, Trash2, AlertCircle } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
-import { generateContentCalendar, isGeminiAvailable } from "../services/gemini";
+import { AIResultCard } from "../components/AIResultCard";
+import { aiErrorMessage, generateContentCalendar } from "../services/gemini";
+import { useAIHealth } from "../hooks/useAIHealth";
 
 export const ContentCalendarGenerator = () => {
   const [topic, setTopic] = useState("");
@@ -10,8 +12,8 @@ export const ContentCalendarGenerator = () => {
   const [days, setDays] = useState("7");
   const [calendar, setCalendar] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const { aiReady, aiMessage } = useAIHealth();
 
   const handleGenerate = async () => {
     if (!topic.trim() || !audience.trim()) {
@@ -19,8 +21,8 @@ export const ContentCalendarGenerator = () => {
       return;
     }
 
-    if (!isGeminiAvailable()) {
-      setError("AI service is not configured. Please check your API key.");
+    if (!aiReady) {
+      setError(aiMessage);
       return;
     }
 
@@ -36,18 +38,10 @@ export const ContentCalendarGenerator = () => {
       );
       setCalendar(calendarContent);
     } catch (err) {
-      setError("Failed to generate calendar. Please try again.");
-      console.error("Calendar Generation Error:", err);
+      setError(aiErrorMessage(err, "Failed to generate calendar. Please try again."));
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleCopy = () => {
-    if (!calendar) return;
-    navigator.clipboard.writeText(calendar);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleClear = () => {
@@ -81,6 +75,11 @@ export const ContentCalendarGenerator = () => {
             <p className="text-sm text-error">{error}</p>
           </div>
         )}
+        {!aiReady && aiMessage && !error && (
+          <div className="mb-6 rounded-lg border border-border-slate bg-surface-container-low p-4">
+            <p className="text-sm text-on-surface-variant">{aiMessage}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Settings */}
@@ -93,7 +92,8 @@ export const ContentCalendarGenerator = () => {
                 type="text"
                 value={topic}
                 onChange={(e) => setTopic(e.target.value)}
-                placeholder="e.g., Coffee Shop, Tech Startup"
+                maxLength={500}
+                placeholder="Enter the brand, topic, or campaign"
                 className="w-full bg-surface border border-border-slate rounded-lg px-3 py-2 text-heading-navy focus:outline-none focus:border-primary transition-colors"
               />
             </div>
@@ -104,7 +104,8 @@ export const ContentCalendarGenerator = () => {
                 type="text"
                 value={audience}
                 onChange={(e) => setAudience(e.target.value)}
-                placeholder="e.g., Coffee Enthusiasts, Developers"
+                maxLength={300}
+                placeholder="Describe the target audience"
                 className="w-full bg-surface border border-border-slate rounded-lg px-3 py-2 text-heading-navy focus:outline-none focus:border-primary transition-colors"
               />
             </div>
@@ -140,7 +141,7 @@ export const ContentCalendarGenerator = () => {
 
             <button
               onClick={handleGenerate}
-              disabled={isProcessing || !topic.trim() || !audience.trim()}
+              disabled={isProcessing || !topic.trim() || !audience.trim() || !aiReady}
               className="w-full bg-primary text-on-primary font-medium py-2.5 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
             >
               {isProcessing ? "Generating..." : "Generate Calendar"}
@@ -155,33 +156,15 @@ export const ContentCalendarGenerator = () => {
           </div>
 
           {/* Output */}
-          {calendar && (
-            <div className="lg:col-span-2 bg-surface-container-lowest border border-border-slate rounded-xl overflow-hidden flex flex-col">
-              <div className="bg-surface-container-low border-b border-border-slate px-4 py-3 flex items-center justify-between">
-                <span className="text-sm font-semibold text-heading-navy">Generated Calendar</span>
-                <button
-                  onClick={handleCopy}
-                  className="text-heading-navy hover:text-primary transition-colors p-1.5 rounded"
-                  title="Copy calendar"
-                >
-                  {copied ? <CheckCircle2 className="w-4 h-4 text-success-teal" /> : <Copy className="w-4 h-4" />}
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto max-h-96 p-4">
-                <div className="text-sm text-heading-navy whitespace-pre-wrap font-mono">
-                  {calendar}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!calendar && (
-            <div className="lg:col-span-2 bg-surface-container-lowest border-2 border-dashed border-border-slate rounded-xl p-12 flex flex-col items-center justify-center text-center">
-              <Calendar className="w-12 h-12 text-primary/30 mb-4" />
-              <p className="text-heading-navy font-medium mb-2">Ready to Generate</p>
-              <p className="text-sm text-on-surface-variant">Fill in the details and click "Generate Calendar" to create your content plan</p>
-            </div>
-          )}
+          <div className="lg:col-span-2">
+            <AIResultCard
+              title="Generated Calendar"
+              content={calendar}
+              placeholder='Fill in the details and click "Generate Calendar" to create your content plan.'
+              exportFileName={`${platform}-content-calendar.txt`}
+              className="min-h-[420px]"
+            />
+          </div>
         </div>
       </div>
     </div>

@@ -3,11 +3,133 @@ import { Briefcase, Printer } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
 
 export const ResumeBuilder = () => {
-  const [form, setForm] = useState({ name: "", title: "", email: "", phone: "", location: "", summary: "", skills: "", experience: "", education: "" });
-  const update = (name: keyof typeof form, value: string) => setForm((current) => ({ ...current, [name]: value }));
-  return <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12"><div className="max-w-6xl mx-auto"><Breadcrumbs />
-    <header className="mb-8"><h1 className="flex items-center gap-3 text-3xl font-bold text-heading-navy"><Briefcase className="h-8 w-8 text-primary" /> Resume Builder</h1><p className="mt-2 text-on-surface-variant">Build an ATS-friendly resume locally and save it through your browser’s PDF printer.</p></header>
-    <div className="grid gap-6 lg:grid-cols-2"><section className="grid gap-4 rounded-2xl border border-border-slate bg-surface-container-lowest p-6 sm:grid-cols-2">{([['name','Full name'],['title','Professional title'],['email','Email'],['phone','Phone'],['location','Location']] as const).map(([name,label]) => <label key={name} className="text-sm font-semibold">{label}<input type={name === 'email' ? 'email' : 'text'} value={form[name]} onChange={(event) => update(name,event.target.value)} className="mt-2 min-h-11 w-full rounded-lg border border-border-slate px-3" /></label>)}{([['summary','Professional summary'],['skills','Skills (comma separated)'],['experience','Experience'],['education','Education']] as const).map(([name,label]) => <label key={name} className="text-sm font-semibold sm:col-span-2">{label}<textarea value={form[name]} onChange={(event) => update(name,event.target.value)} rows={name === 'skills' ? 3 : 5} maxLength={5000} className="mt-2 w-full rounded-lg border border-border-slate p-3" /></label>)}<button type="button" onClick={() => window.print()} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-6 font-semibold text-on-primary sm:col-span-2"><Printer className="h-4 w-4" /> Print or save PDF</button></section>
-      <article data-print-root className="min-h-[900px] rounded-2xl border border-border-slate bg-white p-8 text-slate-900 shadow-sm"><header className="border-b-4 border-blue-700 pb-5"><h2 className="text-4xl font-bold">{form.name || "Your Name"}</h2><p className="mt-1 text-xl text-blue-700">{form.title || "Professional Title"}</p><p className="mt-3 text-sm text-slate-600">{[form.email,form.phone,form.location].filter(Boolean).join(" • ") || "email@example.com • +1 555 000 0000 • City"}</p></header>{form.summary && <section className="mt-6"><h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Summary</h3><p className="mt-2 whitespace-pre-wrap leading-6">{form.summary}</p></section>}{form.skills && <section className="mt-6"><h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Skills</h3><p className="mt-2">{form.skills.split(',').map((skill) => skill.trim()).filter(Boolean).join(" • ")}</p></section>}{form.experience && <section className="mt-6"><h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Experience</h3><p className="mt-2 whitespace-pre-wrap leading-6">{form.experience}</p></section>}{form.education && <section className="mt-6"><h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Education</h3><p className="mt-2 whitespace-pre-wrap leading-6">{form.education}</p></section>}</article></div>
-  </div></div>;
+  const [form, setForm] = useState({
+    name: "",
+    title: "",
+    email: "",
+    phone: "",
+    location: "",
+    summary: "",
+    skills: "",
+    experience: "",
+    education: "",
+  });
+
+  const update = (name: keyof typeof form, value: string) => {
+    setForm((current) => ({ ...current, [name]: value }));
+  };
+
+  const contactLine = [form.email, form.phone, form.location].filter(Boolean).join(" • ");
+  const hasBodyContent = Boolean(form.summary || form.skills || form.experience || form.education);
+
+  return (
+    <div className="flex-1 w-full px-margin-mobile md:px-margin-desktop py-8 lg:py-12">
+      <div className="max-w-6xl mx-auto">
+        <Breadcrumbs />
+
+        <header className="mb-8">
+          <h1 className="flex items-center gap-3 text-3xl font-bold text-heading-navy">
+            <Briefcase className="h-8 w-8 text-primary" />
+            Resume Builder
+          </h1>
+          <p className="mt-2 text-on-surface-variant">
+            Build an ATS-friendly resume locally and save it through your browser&apos;s PDF printer.
+          </p>
+        </header>
+
+        <div className="grid gap-6 lg:grid-cols-2">
+          <section className="grid gap-4 rounded-2xl border border-border-slate bg-surface-container-lowest p-6 sm:grid-cols-2">
+            {([
+              ["name", "Full name"],
+              ["title", "Professional title"],
+              ["email", "Email"],
+              ["phone", "Phone"],
+              ["location", "Location"],
+            ] as const).map(([name, label]) => (
+              <label key={name} className="text-sm font-semibold">
+                {label}
+                <input
+                  type={name === "email" ? "email" : "text"}
+                  value={form[name]}
+                  onChange={(event) => update(name, event.target.value)}
+                  className="mt-2 min-h-11 w-full rounded-lg border border-border-slate px-3"
+                />
+              </label>
+            ))}
+
+            {([
+              ["summary", "Professional summary"],
+              ["skills", "Skills (comma separated)"],
+              ["experience", "Experience"],
+              ["education", "Education"],
+            ] as const).map(([name, label]) => (
+              <label key={name} className="text-sm font-semibold sm:col-span-2">
+                {label}
+                <textarea
+                  value={form[name]}
+                  onChange={(event) => update(name, event.target.value)}
+                  rows={name === "skills" ? 3 : 5}
+                  maxLength={5000}
+                  className="mt-2 w-full rounded-lg border border-border-slate p-3"
+                />
+              </label>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-6 font-semibold text-on-primary sm:col-span-2"
+            >
+              <Printer className="h-4 w-4" />
+              Print or save PDF
+            </button>
+          </section>
+
+          <article data-print-root className="min-h-[900px] rounded-2xl border border-border-slate bg-white p-8 text-slate-900 shadow-sm">
+            <header className="border-b-4 border-blue-700 pb-5">
+              <h2 className="text-4xl font-bold">{form.name || "Resume preview"}</h2>
+              <p className="mt-1 text-xl text-blue-700">{form.title || "Add your professional title"}</p>
+              <p className="mt-3 text-sm text-slate-600">{contactLine || "Your contact details will appear here"}</p>
+            </header>
+
+            {!hasBodyContent && (
+              <section className="mt-6 rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-sm text-slate-600">
+                Start filling out the form to build your resume preview with your own information.
+              </section>
+            )}
+
+            {form.summary && (
+              <section className="mt-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Summary</h3>
+                <p className="mt-2 whitespace-pre-wrap leading-6">{form.summary}</p>
+              </section>
+            )}
+
+            {form.skills && (
+              <section className="mt-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Skills</h3>
+                <p className="mt-2">
+                  {form.skills.split(",").map((skill) => skill.trim()).filter(Boolean).join(" • ")}
+                </p>
+              </section>
+            )}
+
+            {form.experience && (
+              <section className="mt-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Experience</h3>
+                <p className="mt-2 whitespace-pre-wrap leading-6">{form.experience}</p>
+              </section>
+            )}
+
+            {form.education && (
+              <section className="mt-6">
+                <h3 className="text-sm font-bold uppercase tracking-wider text-blue-700">Education</h3>
+                <p className="mt-2 whitespace-pre-wrap leading-6">{form.education}</p>
+              </section>
+            )}
+          </article>
+        </div>
+      </div>
+    </div>
+  );
 };

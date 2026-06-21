@@ -14,7 +14,7 @@ export const PDFToWord = () => {
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-heading-navy mb-4">PDF to Word Converter</h1>
           <p className="text-lg text-on-surface-variant max-w-2xl">
-            Securely convert your PDF files into an editable Word document format (.docx) with absolute layout preservation.
+            Choose Visual Match for the closest page appearance or Editable mode for easier text editing.
           </p>
         </div>
 
@@ -22,12 +22,12 @@ export const PDFToWord = () => {
 
         <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="flex flex-col items-center text-center">
-            <div className="font-bold text-heading-navy text-lg mb-2">Perfect Layout</div>
-            <p className="text-on-surface-variant text-sm">We ensure your converted Word document perfectly mirrors your PDF's formatting.</p>
+            <div className="font-bold text-heading-navy text-lg mb-2">Visual Match</div>
+            <p className="text-on-surface-variant text-sm">Render each page as a matching page image when appearance matters most.</p>
           </div>
           <div className="flex flex-col items-center text-center">
-            <div className="font-bold text-heading-navy text-lg mb-2">Fast Processing</div>
-            <p className="text-on-surface-variant text-sm">Most conversions complete within 5 seconds using our optimized engine.</p>
+            <div className="font-bold text-heading-navy text-lg mb-2">Editable Mode</div>
+            <p className="text-on-surface-variant text-sm">Rebuild readable text when you need a lighter DOCX you can edit.</p>
           </div>
           <div className="flex flex-col items-center text-center">
             <div className="font-bold text-heading-navy text-lg mb-2">Absolute Privacy</div>

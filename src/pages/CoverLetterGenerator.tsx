@@ -1,7 +1,9 @@
 import { useState } from "react";
-import { FileText, Copy, CheckCircle2, Trash2, AlertCircle } from "lucide-react";
+import { FileText, Trash2, AlertCircle } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
-import { generateCoverLetter, isGeminiAvailable } from "../services/gemini";
+import { AIResultCard } from "../components/AIResultCard";
+import { aiErrorMessage, generateCoverLetter } from "../services/gemini";
+import { useAIHealth } from "../hooks/useAIHealth";
 
 export const CoverLetterGenerator = () => {
   const [jobTitle, setJobTitle] = useState("");
@@ -10,8 +12,8 @@ export const CoverLetterGenerator = () => {
   const [skills, setSkills] = useState("");
   const [coverLetter, setCoverLetter] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
+  const { aiReady, aiMessage } = useAIHealth();
 
   const handleGenerate = async () => {
     if (!jobTitle.trim() || !companyName.trim() || !yourName.trim()) {
@@ -19,8 +21,8 @@ export const CoverLetterGenerator = () => {
       return;
     }
 
-    if (!isGeminiAvailable()) {
-      setError("AI service is not configured. Please check your API key.");
+    if (!aiReady) {
+      setError(aiMessage);
       return;
     }
 
@@ -35,18 +37,10 @@ export const CoverLetterGenerator = () => {
       );
       setCoverLetter(letter);
     } catch (err) {
-      setError("Failed to generate cover letter. Please try again.");
-      console.error("Cover Letter Generation Error:", err);
+      setError(aiErrorMessage(err, "Failed to generate cover letter. Please try again."));
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleCopy = () => {
-    if (!coverLetter) return;
-    navigator.clipboard.writeText(coverLetter);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleClear = () => {
@@ -80,6 +74,11 @@ export const CoverLetterGenerator = () => {
             <p className="text-sm text-error">{error}</p>
           </div>
         )}
+        {!aiReady && aiMessage && !error && (
+          <div className="mb-6 rounded-lg border border-border-slate bg-surface-container-low p-4">
+            <p className="text-sm text-on-surface-variant">{aiMessage}</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Input Section */}
@@ -92,7 +91,7 @@ export const CoverLetterGenerator = () => {
                     type="text"
                     value={yourName}
                     onChange={(e) => setYourName(e.target.value)}
-                    placeholder="John Doe"
+                    placeholder="Enter your full name"
                     className="w-full bg-surface border border-border-slate rounded-lg px-3 py-2 text-heading-navy focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -103,7 +102,7 @@ export const CoverLetterGenerator = () => {
                     type="text"
                     value={jobTitle}
                     onChange={(e) => setJobTitle(e.target.value)}
-                    placeholder="e.g., Senior Software Engineer"
+                    placeholder="Enter the role title"
                     className="w-full bg-surface border border-border-slate rounded-lg px-3 py-2 text-heading-navy focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -114,7 +113,7 @@ export const CoverLetterGenerator = () => {
                     type="text"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="e.g., Acme Corporation"
+                    placeholder="Enter the company name"
                     className="w-full bg-surface border border-border-slate rounded-lg px-3 py-2 text-heading-navy focus:outline-none focus:border-primary transition-colors"
                   />
                 </div>
@@ -138,7 +137,7 @@ export const CoverLetterGenerator = () => {
             <div className="bg-surface-container-lowest border border-border-slate rounded-xl p-4 space-y-3">
               <button
                 onClick={handleGenerate}
-                disabled={isProcessing || !jobTitle.trim() || !companyName.trim() || !yourName.trim()}
+                disabled={isProcessing || !jobTitle.trim() || !companyName.trim() || !yourName.trim() || !aiReady}
                 className="w-full bg-primary text-on-primary font-medium py-2.5 rounded-lg hover:opacity-90 transition-opacity disabled:opacity-50"
               >
                 {isProcessing ? "Generating..." : "Generate Letter"}
@@ -152,25 +151,13 @@ export const CoverLetterGenerator = () => {
             </div>
 
             {/* Cover Letter Output */}
-            {coverLetter && (
-              <div className="bg-surface-container-lowest border border-border-slate rounded-xl overflow-hidden flex flex-col">
-                <div className="bg-surface-container-low border-b border-border-slate px-4 py-3 flex items-center justify-between">
-                  <span className="text-sm font-semibold text-heading-navy">Letter</span>
-                  <button
-                    onClick={handleCopy}
-                    className="text-heading-navy hover:text-primary transition-colors p-1.5 rounded"
-                    title="Copy letter"
-                  >
-                    {copied ? <CheckCircle2 className="w-4 h-4 text-success-teal" /> : <Copy className="w-4 h-4" />}
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto max-h-96 p-4">
-                  <div className="text-sm text-heading-navy whitespace-pre-wrap font-mono">
-                    {coverLetter}
-                  </div>
-                </div>
-              </div>
-            )}
+            <AIResultCard
+              title="Cover Letter"
+              content={coverLetter}
+              placeholder="Your tailored cover letter will appear here with cleaner formatting and export controls."
+              exportFileName="cover-letter.txt"
+              className="min-h-[360px]"
+            />
           </div>
         </div>
       </div>

@@ -14,7 +14,7 @@ export const WordToPDF = () => {
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-heading-navy mb-4">Word to PDF</h1>
           <p className="text-lg text-on-surface-variant max-w-2xl">
-            Convert DOCX content into a readable PDF locally. Complex Word layouts may be simplified.
+            Choose Visual Match for the closest rendered page layout or Editable mode for a lighter text-first PDF.
           </p>
         </div>
 

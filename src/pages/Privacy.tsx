@@ -3,7 +3,7 @@ import { Breadcrumbs } from "../components/Breadcrumbs";
 
 const privacyAreas = [
   [Database, "Local tools", "PDF editing and conversion, image processing, calculators, builders, citations, QR, and developer tools use browser memory. Compression is the only PDF operation sent to a Vercel Function."],
-  [Cloud, "Cloud operations", "Compression uses temporary function memory without persistence. AI text is sent to Gemini, and AI document tools require consent before direct Gemini upload."],
+  [Cloud, "Cloud operations", "Compression uses temporary function memory without persistence. AI tools send only the text or extracted document snippets needed for the request."],
   [Eye, "Retention", "Compression buffers are discarded when the request ends. One-shot AI files are deleted after processing; chat files are deleted when the session ends."],
   [UserCheck, "Your control", "Every upload boundary is stated on its tool page. You may use local tools without sending content to Gemini and can end an AI document session at any time."],
 ] as const;

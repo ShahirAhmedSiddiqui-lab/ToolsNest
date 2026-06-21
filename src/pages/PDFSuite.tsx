@@ -32,7 +32,7 @@ export const PDFSuite = () => {
             </div>
             <h2 className="text-2xl font-semibold text-heading-navy mb-2">PDF to Word Converter</h2>
             <p className="text-base text-on-surface-variant mb-6">
-              Extract readable PDF text into a lightweight editable Word document. Complex layouts may be simplified.
+              Choose Visual Match for the closest page appearance or Editable mode for easier text editing.
             </p>
             <Link to="/pdf-tools/pdf-to-word" className="text-sm font-medium text-on-primary bg-primary px-6 py-3 rounded-lg hover:bg-primary-container transition-colors shadow-sm inline-flex items-center gap-2">
               Try Converter <ArrowRight className="w-4 h-4" />
@@ -50,7 +50,7 @@ export const PDFSuite = () => {
 
         {/* Tool Cards */}
         {[
-          { title: "Word to PDF", desc: "Convert Word documents to secure PDF files.", icon: FileInput, tags: ["Popular"], href: "/pdf-tools/word-to-pdf" },
+          { title: "Word to PDF", desc: "Convert DOCX using Visual Match or Editable mode.", icon: FileInput, tags: ["Popular"], href: "/pdf-tools/word-to-pdf" },
           { title: "Compress PDF", desc: "Reduce file size while maintaining quality.", icon: Minimize, tags: ["Optimization"], href: "/pdf-tools/compress-pdf" },
           { title: "Merge PDF", desc: "Combine multiple PDFs into a single document.", icon: Layers, tags: ["Utility"], href: "/pdf-tools/merge-pdf" },
           { title: "Split PDF", desc: "Extract pages or separate PDFs into multiple files.", icon: Split, tags: ["Utility"], href: "/pdf-tools/split-pdf" },
@@ -59,7 +59,7 @@ export const PDFSuite = () => {
           { title: "Add Watermark", desc: "Apply a subtle diagonal text watermark.", icon: Stamp, tags: ["Local"], href: "/pdf-tools/watermark" },
           { title: "JPG to PDF", desc: "Convert images to PDF documents quickly.", icon: FileInput, tags: ["Utility"], href: "/pdf-tools/jpg-to-pdf" },
           { title: "PDF to JPG", desc: "Convert PDF pages into high-quality JPG images.", icon: FileOutput, tags: ["Utility"], href: "/pdf-tools/pdf-to-jpg" },
-          { title: "PDF to PPT", desc: "Convert PDFs to editable PowerPoint presentations.", icon: FileOutput, tags: ["Utility"], href: "/pdf-tools/pdf-to-ppt" },
+          { title: "PDF to PPT", desc: "Choose slide-accurate visual output or editable text slides.", icon: FileOutput, tags: ["Utility"], href: "/pdf-tools/pdf-to-ppt" },
         ].map((tool) => {
           const Icon = tool.icon;
           return (

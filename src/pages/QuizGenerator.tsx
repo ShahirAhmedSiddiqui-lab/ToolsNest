@@ -1,15 +1,17 @@
 import { useState } from "react";
-import { Brain, Play, Copy, CheckCircle2, Trash2, AlertCircle } from "lucide-react";
+import { Brain, Play, Trash2, AlertCircle } from "lucide-react";
 import { Breadcrumbs } from "../components/Breadcrumbs";
-import { generateQuizQuestions, isGeminiAvailable } from "../services/gemini";
+import { AIResultCard } from "../components/AIResultCard";
+import { aiErrorMessage, generateQuizQuestions } from "../services/gemini";
+import { useAIHealth } from "../hooks/useAIHealth";
 
 export const QuizGenerator = () => {
   const [input, setInput] = useState("");
   const [output, setOutput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [error, setError] = useState("");
   const [numberOfQuestions, setNumberOfQuestions] = useState("5");
+  const { aiReady, aiMessage } = useAIHealth();
 
   const handleProcess = async () => {
     if (!input.trim()) {
@@ -17,8 +19,8 @@ export const QuizGenerator = () => {
       return;
     }
 
-    if (!isGeminiAvailable()) {
-      setError("AI service is not configured. Please check your API key.");
+    if (!aiReady) {
+      setError(aiMessage);
       return;
     }
 
@@ -29,18 +31,10 @@ export const QuizGenerator = () => {
       const quiz = await generateQuizQuestions(input, numQuestions);
       setOutput(quiz);
     } catch (err) {
-      setError("Failed to generate quiz. Please try again.");
-      console.error("Quiz Generation Error:", err);
+      setError(aiErrorMessage(err, "Failed to generate quiz. Please try again."));
     } finally {
       setIsProcessing(false);
     }
-  };
-
-  const handleCopy = () => {
-    if (!output) return;
-    navigator.clipboard.writeText(output);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   const handleClear = () => {
@@ -71,6 +65,11 @@ export const QuizGenerator = () => {
             <p className="text-sm text-error">{error}</p>
           </div>
         )}
+        {!aiReady && aiMessage && !error && (
+          <div className="mb-6 rounded-lg border border-border-slate bg-surface-container-low p-4">
+            <p className="text-sm text-on-surface-variant">{aiMessage}</p>
+          </div>
+        )}
 
         <div className="mb-4 flex items-center gap-4 flex-wrap">
           <label className="text-sm font-semibold text-heading-navy">Number of Questions:</label>
@@ -99,6 +98,7 @@ export const QuizGenerator = () => {
               placeholder="Paste your study notes here..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              maxLength={25000}
               spellCheck={false}
             />
           </div>
@@ -109,31 +109,20 @@ export const QuizGenerator = () => {
               <span className="text-sm font-semibold text-heading-navy mr-auto">Quiz Questions</span>
               <button 
                 onClick={handleProcess}
-                disabled={isProcessing || !input.trim()}
+                disabled={isProcessing || !input.trim() || !aiReady}
                 className="text-xs font-medium text-on-primary bg-primary px-3 py-1.5 rounded hover:opacity-90 transition-opacity flex items-center gap-1 shadow-sm disabled:opacity-50"
               >
                 <Play className="w-3 h-3" /> {isProcessing ? "Generating..." : "Generate"}
               </button>
             </div>
-            <div className="relative flex-1 flex flex-col">
-              <textarea
-                className="flex-1 w-full p-4 resize-none bg-transparent text-base text-heading-navy outline-none font-mono text-sm"
-                value={output}
-                readOnly
-                placeholder="Generated quiz questions will appear here..."
+            <div className="flex-1 p-4">
+              <AIResultCard
+                title="Quiz Questions"
+                content={output}
+                placeholder="Generated quiz questions will appear here in a cleaner study-friendly layout."
+                exportFileName="quiz-questions.txt"
+                className="min-h-full"
               />
-              {output && (
-                <button 
-                  onClick={handleCopy}
-                  className="absolute top-4 right-4 bg-surface border border-border-slate shadow-sm text-heading-navy hover:text-primary transition-colors p-2 rounded-md flex items-center gap-2 group"
-                  title="Copy to clipboard"
-                >
-                  {copied ? <CheckCircle2 className="w-4 h-4 text-success-teal" /> : <Copy className="w-4 h-4 group-hover:scale-110 transition-transform" />}
-                  <span className="text-xs font-medium sr-only md:not-sr-only md:block">
-                    {copied ? "Copied!" : "Copy"}
-                  </span>
-                </button>
-              )}
             </div>
           </div>
         </div>

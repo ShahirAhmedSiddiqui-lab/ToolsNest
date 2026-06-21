@@ -14,7 +14,7 @@ export const PDFToPPT = () => {
           </div>
           <h1 className="text-3xl lg:text-4xl font-bold text-heading-navy mb-4">PDF to PPT</h1>
           <p className="text-lg text-on-surface-variant max-w-2xl">
-            Convert PDFs to editable PowerPoint presentations.
+            Choose Visual Match for slide-accurate pages or Editable mode for lighter text slides.
           </p>
         </div>
 

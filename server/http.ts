@@ -24,6 +24,20 @@ const allowedOrigins = () => {
   return values;
 };
 
+const headerValue = (value: string | string[] | undefined) => Array.isArray(value) ? value[0] : value;
+
+const isSameOrigin = (request: ApiRequest, origin: string) => {
+  try {
+    const originUrl = new URL(origin);
+    if (!["http:", "https:"].includes(originUrl.protocol)) return false;
+    const forwardedHost = headerValue(request.headers["x-forwarded-host"])?.split(",")[0]?.trim();
+    const requestHost = forwardedHost || request.headers.host;
+    return Boolean(requestHost) && originUrl.host.toLowerCase() === requestHost?.toLowerCase();
+  } catch {
+    return false;
+  }
+};
+
 export const secureRequest = (request: ApiRequest, response: ApiResponse, methods: string[]) => {
   response.setHeader("Cache-Control", "no-store, max-age=0");
   response.setHeader("X-Content-Type-Options", "nosniff");
@@ -33,7 +47,7 @@ export const secureRequest = (request: ApiRequest, response: ApiResponse, method
     return false;
   }
   const origin = request.headers.origin;
-  if (origin && !allowedOrigins().has(origin.replace(/\/$/, ""))) {
+  if (origin && !isSameOrigin(request, origin) && !allowedOrigins().has(origin.replace(/\/$/, ""))) {
     json(response, 403, { error: { code: "ORIGIN_DENIED", message: "Request origin is not allowed." } });
     return false;
   }

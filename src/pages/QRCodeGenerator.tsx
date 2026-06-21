@@ -98,7 +98,7 @@ export const QRCodeGenerator = () => {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Enter URL or text (e.g., https://example.com or Contact info)"
+                  placeholder="Enter a URL, plain text, or contact details"
                   className="w-full bg-surface border border-border-slate rounded-lg px-4 py-3 text-heading-navy placeholder:text-on-surface-variant focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors"
                 />
               </div>

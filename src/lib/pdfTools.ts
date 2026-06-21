@@ -13,6 +13,8 @@ export type PdfToolId =
   | "pdf-to-jpg"
   | "pdf-to-ppt";
 
+export type ConversionMode = "visual" | "editable";
+
 export type PdfToolOptions = {
   compression?: "low" | "medium" | "high";
   pageSize?: "A4" | "Letter";
@@ -26,18 +28,34 @@ export type PdfToolOptions = {
   selectedPages?: string;
   removePages?: string;
   watermarkText?: string;
+  conversionMode?: ConversionMode;
 };
 
 export type ToolResult = { fileName: string; blob: Blob; details: string[] };
+export type ExtractedPdfPage = { pageNumber: number; text: string };
+
+type RenderedPage = { blob: Blob; width: number; height: number };
+type TextDocxImage = RenderedPage & { name: string };
 
 const MB = 1024 * 1024;
 const FILE_LIMIT = 20 * MB;
 const TOTAL_LIMIT = 40 * MB;
 const RASTER_PAGE_LIMIT = 50;
+const PDF_AI_TEXT_LIMIT = 24_000;
+const DEFAULT_JPEG_QUALITY = 0.88;
+const EMU_PER_PIXEL = 9525;
+const TWIPS_PER_PIXEL = 15;
+const DOCX_MARGIN_TWIPS = 360;
+const PPT_MAX_TEXT_LINES = 40;
 
 const isPdf = (file: File) => file.type === "application/pdf" || file.name.toLowerCase().endsWith(".pdf");
 const ext = (file: File) => file.name.split(".").pop()?.toLowerCase() ?? "";
 const stem = (name: string) => name.replace(/\.[^.]+$/, "").replace(/[^a-z0-9 _.-]/gi, "").trim() || "document";
+const pxToEmu = (value: number) => Math.max(1, Math.round(value * EMU_PER_PIXEL));
+const pxToTwips = (value: number) => Math.max(1, Math.round(value * TWIPS_PER_PIXEL));
+const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
+const normalizeWhitespace = (value: string) => value.replace(/\s+/g, " ").trim();
+const escapeXml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 export const formatBytes = (bytes: number) => {
   if (bytes < 1024) return `${bytes} B`;
@@ -68,13 +86,36 @@ const loadPdfJs = async () => {
 };
 
 const canvasBlob = (canvas: HTMLCanvasElement, type: string, quality?: number) =>
-  new Promise<Blob>((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error("The browser could not encode the image.")), type, quality));
+  new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error("The browser could not encode the image."))), type, quality);
+  });
 
-const renderPdfPages = async (file: File, quality = 0.82, scale = 1.5) => {
+const loadDocxPreview = async () => {
+  const module = await import("docx-preview");
+  return module;
+};
+
+const loadHtmlToImage = async () => {
+  const module = await import("html-to-image");
+  return module;
+};
+
+const waitForPaint = async () => {
+  if ("fonts" in document && document.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      // Ignore font readiness failures and continue with the rendered DOM.
+    }
+  }
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+};
+
+export const renderPdfPages = async (file: File, quality = DEFAULT_JPEG_QUALITY, scale = 1.5): Promise<RenderedPage[]> => {
   const pdfjs = await loadPdfJs();
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
   if (pdf.numPages > RASTER_PAGE_LIMIT) throw new Error(`This operation supports up to ${RASTER_PAGE_LIMIT} pages.`);
-  const pages: Array<{ blob: Blob; width: number; height: number }> = [];
+  const pages: RenderedPage[] = [];
   for (let number = 1; number <= pdf.numPages; number += 1) {
     const page = await pdf.getPage(number);
     const viewport = page.getViewport({ scale });
@@ -94,28 +135,48 @@ const renderPdfPages = async (file: File, quality = 0.82, scale = 1.5) => {
   return pages;
 };
 
-const extractPdfPages = async (file: File) => {
+export const extractPdfPages = async (file: File): Promise<ExtractedPdfPage[]> => {
   const pdfjs = await loadPdfJs();
   const pdf = await pdfjs.getDocument({ data: await file.arrayBuffer() }).promise;
-  const pages: string[] = [];
+  const pages: ExtractedPdfPage[] = [];
   for (let number = 1; number <= pdf.numPages; number += 1) {
     const page = await pdf.getPage(number);
     const content = await page.getTextContent();
-    const lines: string[] = [];
-    let currentY: number | null = null;
-    let line = "";
-    for (const item of content.items) {
-      if (!("str" in item)) continue;
-      const y = item.transform[5];
-      if (currentY !== null && Math.abs(y - currentY) > 3) {
-        if (line.trim()) lines.push(line.trim());
-        line = "";
+    const items = content.items.reduce<Array<{ text: string; x: number; y: number }>>((all, item) => {
+      const candidate = item as { str?: unknown; transform?: unknown };
+      if (typeof candidate.str !== "string" || !Array.isArray(candidate.transform) || candidate.transform.length < 6) {
+        return all;
       }
-      line += `${line ? " " : ""}${item.str}`;
-      currentY = y;
+      if (!candidate.str.trim()) return all;
+      all.push({
+        text: candidate.str,
+        x: Number(candidate.transform[4] ?? 0),
+        y: Number(candidate.transform[5] ?? 0),
+      });
+      return all;
+    }, []);
+
+    items.sort((left, right) => Math.abs(right.y - left.y) > 2 ? right.y - left.y : left.x - right.x);
+
+    const lines: Array<{ y: number; parts: Array<{ x: number; text: string }> }> = [];
+    for (const item of items) {
+      const line = lines.find((candidate) => Math.abs(candidate.y - item.y) <= 3);
+      if (line) {
+        line.parts.push({ x: item.x, text: item.text });
+      } else {
+        lines.push({ y: item.y, parts: [{ x: item.x, text: item.text }] });
+      }
     }
-    if (line.trim()) lines.push(line.trim());
-    pages.push(lines.join("\n"));
+
+    const pageText = lines
+      .sort((left, right) => right.y - left.y)
+      .map((line) => line.parts.sort((left, right) => left.x - right.x).map((part) => part.text).join(" "))
+      .map(normalizeWhitespace)
+      .filter(Boolean)
+      .join("\n")
+      .slice(0, PDF_AI_TEXT_LIMIT);
+
+    pages.push({ pageNumber: number, text: pageText });
   }
   await pdf.cleanup();
   return pages;
@@ -144,9 +205,12 @@ const parsePageSelection = (pageCount: number, options: PdfToolOptions): number[
 const createDocx = async (pages: string[]) => {
   const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
-  const escapeXml = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const body = pages.map((page, pageIndex) => {
-    const paragraphs = page.split(/\n+/).filter(Boolean).map((line) => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(line)}</w:t></w:r></w:p>`).join("");
+    const paragraphs = page
+      .split(/\n+/)
+      .filter(Boolean)
+      .map((line) => `<w:p><w:r><w:t xml:space="preserve">${escapeXml(line)}</w:t></w:r></w:p>`)
+      .join("");
     return `${paragraphs}${pageIndex < pages.length - 1 ? '<w:p><w:r><w:br w:type="page"/></w:r></w:p>' : ""}`;
   }).join("");
   zip.file("[Content_Types].xml", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
@@ -158,7 +222,6 @@ const createDocx = async (pages: string[]) => {
 const createPptx = async (pages: string[]) => {
   const { default: JSZip } = await import("jszip");
   const zip = new JSZip();
-  const esc = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const overrides = pages.map((_, index) => `<Override PartName="/ppt/slides/slide${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join("");
   zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>${overrides}</Types>`);
   zip.folder("_rels")?.file(".rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>');
@@ -167,9 +230,69 @@ const createPptx = async (pages: string[]) => {
   const rels = pages.map((_, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${index + 1}.xml"/>`).join("");
   zip.folder("ppt")?.folder("_rels")?.file("presentation.xml.rels", `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${rels}</Relationships>`);
   pages.forEach((text, index) => {
-    const paragraphs = (text || `Page ${index + 1}`).split(/\n+/).slice(0, 40).map((line) => `<a:p><a:r><a:rPr lang="en-US" sz="1800"/><a:t>${esc(line)}</a:t></a:r><a:endParaRPr lang="en-US"/></a:p>`).join("");
+    const paragraphs = (text || `Page ${index + 1}`)
+      .split(/\n+/)
+      .slice(0, PPT_MAX_TEXT_LINES)
+      .map((line) => `<a:p><a:r><a:rPr lang="en-US" sz="1800"/><a:t>${escapeXml(line)}</a:t></a:r><a:endParaRPr lang="en-US"/></a:p>`)
+      .join("");
     zip.folder("ppt")?.folder("slides")?.file(`slide${index + 1}.xml`, `<?xml version="1.0" encoding="UTF-8"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/><p:sp><p:nvSpPr><p:cNvPr id="2" name="Page ${index + 1}"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="457200" y="342900"/><a:ext cx="11277600" cy="6172200"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>${paragraphs}</p:txBody></p:sp></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`);
   });
+  return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", compression: "DEFLATE" });
+};
+
+const docxImageDrawingXml = (relationshipId: string, widthPx: number, heightPx: number) => {
+  const widthEmu = pxToEmu(widthPx);
+  const heightEmu = pxToEmu(heightPx);
+  return `<w:p><w:r><w:drawing><wp:inline distT="0" distB="0" distL="0" distR="0" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"><wp:extent cx="${widthEmu}" cy="${heightEmu}"/><wp:docPr id="1" name="${relationshipId}"/><a:graphic xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:nvPicPr><pic:cNvPr id="0" name="${relationshipId}.jpg"/><pic:cNvPicPr/></pic:nvPicPr><pic:blipFill><a:blip r:embed="${relationshipId}" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"/><a:stretch><a:fillRect/></a:stretch></pic:blipFill><pic:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${widthEmu}" cy="${heightEmu}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></pic:spPr></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>`;
+};
+
+const createImageDocx = async (pages: TextDocxImage[]) => {
+  const { default: JSZip } = await import("jszip");
+  const zip = new JSZip();
+  const pageWidthTwips = pxToTwips(pages[0]?.width ?? 794);
+  const pageHeightTwips = pxToTwips(pages[0]?.height ?? 1123);
+
+  const body = pages
+    .map((page, index) => `${docxImageDrawingXml(`rId${index + 1}`, page.width, page.height)}${index < pages.length - 1 ? '<w:p><w:r><w:br w:type="page"/></w:r></w:p>' : ""}`)
+    .join("");
+
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  zip.folder("_rels")?.file(".rels", '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="root" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  zip.folder("word")?.folder("_rels")?.file("document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${pages.map((page, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="media/${page.name}"/>`).join("")}</Relationships>`);
+  zip.folder("word")?.file("document.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>${body}<w:sectPr><w:pgSz w:w="${pageWidthTwips}" w:h="${pageHeightTwips}"/><w:pgMar w:top="${DOCX_MARGIN_TWIPS}" w:right="${DOCX_MARGIN_TWIPS}" w:bottom="${DOCX_MARGIN_TWIPS}" w:left="${DOCX_MARGIN_TWIPS}"/></w:sectPr></w:body></w:document>`);
+  const media = zip.folder("word")?.folder("media");
+  for (const page of pages) {
+    media?.file(page.name, await page.blob.arrayBuffer());
+  }
+  return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", compression: "DEFLATE" });
+};
+
+const createImagePptx = async (pages: TextDocxImage[]) => {
+  const { default: JSZip } = await import("jszip");
+  const zip = new JSZip();
+  const slideWidth = pxToEmu(pages[0]?.width ?? 1280);
+  const slideHeight = pxToEmu(pages[0]?.height ?? 720);
+  const overrides = pages
+    .map((_, index) => `<Override PartName="/ppt/slides/slide${index + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`)
+    .join("");
+
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Default Extension="jpg" ContentType="image/jpeg"/><Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>${overrides}</Types>`);
+  zip.folder("_rels")?.file(".rels", '<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/></Relationships>');
+  const ids = pages.map((_, index) => `<p:sldId id="${256 + index}" r:id="rId${index + 1}"/>`).join("");
+  zip.folder("ppt")?.file("presentation.xml", `<?xml version="1.0" encoding="UTF-8"?><p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:sldIdLst>${ids}</p:sldIdLst><p:sldSz cx="${slideWidth}" cy="${slideHeight}" type="screen16x9"/></p:presentation>`);
+  zip.folder("ppt")?.folder("_rels")?.file("presentation.xml.rels", `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">${pages.map((_, index) => `<Relationship Id="rId${index + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide${index + 1}.xml"/>`).join("")}</Relationships>`);
+
+  const slides = zip.folder("ppt")?.folder("slides");
+  const slideRels = slides?.folder("_rels");
+  const media = zip.folder("ppt")?.folder("media");
+
+  for (let index = 0; index < pages.length; index += 1) {
+    const page = pages[index];
+    slides?.file(`slide${index + 1}.xml`, `<?xml version="1.0" encoding="UTF-8"?><p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"><p:cSld><p:spTree><p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr/><p:pic><p:nvPicPr><p:cNvPr id="2" name="${page.name}"/><p:cNvPicPr/><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="rId1"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${slideWidth}" cy="${slideHeight}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic></p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`);
+    slideRels?.file(`slide${index + 1}.xml.rels`, `<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/${page.name}"/></Relationships>`);
+    media?.file(page.name, await page.blob.arrayBuffer());
+  }
+
   return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.presentationml.presentation", compression: "DEFLATE" });
 };
 
@@ -262,9 +385,10 @@ const extractDocxText = async (file: File) => {
   if (!document) throw new Error("This DOCX does not contain a readable document body.");
   const xml = new DOMParser().parseFromString(await document.async("text"), "application/xml");
   if (xml.querySelector("parsererror")) throw new Error("The DOCX document is malformed.");
-  return Array.from(xml.getElementsByTagNameNS("*", "p")).map((paragraph) =>
-    Array.from(paragraph.getElementsByTagNameNS("*", "t")).map((node) => node.textContent ?? "").join(""),
-  ).filter(Boolean);
+  return Array.from(xml.getElementsByTagNameNS("*", "p"))
+    .map((paragraph) => Array.from(paragraph.getElementsByTagNameNS("*", "t")).map((node) => node.textContent ?? "").join(""))
+    .map(normalizeWhitespace)
+    .filter(Boolean);
 };
 
 const textPdf = async (lines: string[], pageSize: "A4" | "Letter" = "A4") => {
@@ -278,7 +402,10 @@ const textPdf = async (lines: string[], pageSize: "A4" | "Letter" = "A4") => {
   for (const rawLine of lines) {
     const chunks = safe(rawLine).match(/.{1,88}(?:\s|$)|.{1,88}/g) ?? [""];
     for (const line of chunks) {
-      if (y < 48) { page = pdf.addPage(dimensions); y = page.getHeight() - 48; }
+      if (y < 48) {
+        page = pdf.addPage(dimensions);
+        y = page.getHeight() - 48;
+      }
       page.drawText(line.trim(), { x: 48, y, size: 11, font, color: rgb(0.08, 0.1, 0.16) });
       y -= 16;
     }
@@ -287,10 +414,137 @@ const textPdf = async (lines: string[], pageSize: "A4" | "Letter" = "A4") => {
   return new Blob([await pdf.save()], { type: "application/pdf" });
 };
 
+const renderDocxPages = async (file: File): Promise<RenderedPage[]> => {
+  if (typeof document === "undefined") {
+    throw new Error("Visual Word rendering is only available in the browser.");
+  }
+
+  const { renderAsync } = await loadDocxPreview();
+  const { toJpeg } = await loadHtmlToImage();
+  const host = document.createElement("div");
+  host.style.position = "fixed";
+  host.style.left = "-20000px";
+  host.style.top = "0";
+  host.style.width = "fit-content";
+  host.style.background = "#ffffff";
+  host.style.zIndex = "-1";
+  document.body.appendChild(host);
+
+  try {
+    const bodyContainer = document.createElement("div");
+    const styleContainer = document.createElement("div");
+    host.appendChild(styleContainer);
+    host.appendChild(bodyContainer);
+    await renderAsync(await file.arrayBuffer(), bodyContainer, styleContainer, {
+      breakPages: true,
+      inWrapper: true,
+      ignoreLastRenderedPageBreak: false,
+      useBase64URL: true,
+    });
+    await waitForPaint();
+
+    const pageNodes = Array.from(bodyContainer.querySelectorAll(".docx-wrapper section, section.docx, section"));
+    const targets = pageNodes.length ? pageNodes : [bodyContainer];
+    const pages: RenderedPage[] = [];
+
+    for (const target of targets) {
+      const width = Math.ceil((target as HTMLElement).scrollWidth || (target as HTMLElement).clientWidth || 794);
+      const height = Math.ceil((target as HTMLElement).scrollHeight || (target as HTMLElement).clientHeight || 1123);
+      const dataUrl = await toJpeg(target as HTMLElement, {
+        cacheBust: true,
+        quality: 0.96,
+        pixelRatio: 2,
+        backgroundColor: "#ffffff",
+        width,
+        height,
+      });
+      const blob = await fetch(dataUrl).then((response) => response.blob());
+      pages.push({ blob, width, height });
+    }
+
+    if (!pages.length) {
+      throw new Error("This DOCX could not be rendered for visual matching.");
+    }
+
+    return pages;
+  } finally {
+    host.remove();
+  }
+};
+
+const createPdfFromImages = async (pages: RenderedPage[]) => {
+  const { PDFDocument } = await import("pdf-lib");
+  const pdf = await PDFDocument.create();
+  for (const image of pages) {
+    const jpg = await pdf.embedJpg(await image.blob.arrayBuffer());
+    const page = pdf.addPage([image.width, image.height]);
+    page.drawImage(jpg, { x: 0, y: 0, width: page.getWidth(), height: page.getHeight() });
+  }
+  return new Blob([await pdf.save()], { type: "application/pdf" });
+};
+
+const visualPdfToWord = async (file: File) => {
+  const pages = await renderPdfPages(file, 0.94, 2);
+  const blob = await createImageDocx(pages.map((page, index) => ({ ...page, name: `page-${index + 1}.jpg` })));
+  return {
+    blob,
+    details: [`Visual Match mode: preserved ${pages.length} page ${pages.length === 1 ? "layout" : "layouts"} as page images`, "Best appearance, limited editing"],
+  };
+};
+
+const editablePdfToWord = async (file: File) => {
+  const pages = await extractPdfPages(file);
+  if (!pages.some((page) => page.text.trim())) throw new Error("No readable text was found in this PDF. Try Visual Match mode for scanned pages.");
+  const blob = await createDocx(pages.map((page) => page.text));
+  return {
+    blob,
+    details: ["Editable mode: preserved readable text and paragraph breaks", "Best editing, layout may change"],
+  };
+};
+
+const visualPdfToPpt = async (file: File) => {
+  const pages = await renderPdfPages(file, 0.94, 2);
+  const blob = await createImagePptx(pages.map((page, index) => ({ ...page, name: `slide-${index + 1}.jpg` })));
+  return {
+    blob,
+    details: [`Visual Match mode: created ${pages.length} slide ${pages.length === 1 ? "image" : "images"}`, "Best appearance, limited editing"],
+  };
+};
+
+const editablePdfToPpt = async (file: File) => {
+  const pages = await extractPdfPages(file);
+  if (!pages.some((page) => page.text.trim())) throw new Error("No readable text was found in this PDF. Try Visual Match mode for scanned pages.");
+  const blob = await createPptx(pages.map((page) => page.text));
+  return {
+    blob,
+    details: [`Editable mode: created ${pages.length} text slide ${pages.length === 1 ? "" : "s"}`, "Best editing, layout may change"],
+  };
+};
+
+const visualWordToPdf = async (file: File) => {
+  const pages = await renderDocxPages(file);
+  const blob = await createPdfFromImages(pages);
+  return {
+    blob,
+    details: [`Visual Match mode: rendered ${pages.length} DOCX page ${pages.length === 1 ? "" : "s"} into matching PDF pages`, "Best appearance, limited editing"],
+  };
+};
+
+const editableWordToPdf = async (file: File, options: PdfToolOptions) => {
+  const lines = await extractDocxText(file);
+  if (!lines.length) throw new Error("This DOCX does not contain readable text for Editable mode.");
+  const blob = await textPdf(lines, options.pageSize);
+  return {
+    blob,
+    details: ["Editable mode: rebuilt the document from extracted text", "Best editing, layout may change"],
+  };
+};
+
 export const processPdfTool = async (tool: PdfToolId, files: File[], options: PdfToolOptions): Promise<ToolResult> => {
   const validation = validateFiles(tool, files);
   if (validation) throw new Error(validation);
   const { PDFDocument } = await import("pdf-lib");
+  const conversionMode = options.conversionMode ?? "visual";
 
   if (tool === "merge-pdf") {
     const output = await PDFDocument.create();
@@ -344,7 +598,9 @@ export const processPdfTool = async (tool: PdfToolId, files: File[], options: Pd
 
   if (tool === "pdf-to-jpg") {
     const pages = await renderPdfPages(files[0], Math.min(1, Math.max(0.4, (options.jpgQuality ?? 90) / 100)), 1.75);
-    if (pages.length === 1) return { fileName: `${stem(files[0].name)}-page-1.jpg`, blob: pages[0].blob, details: ["Rendered 1 page locally", `Output size: ${formatBytes(pages[0].blob.size)}`] };
+    if (pages.length === 1) {
+      return { fileName: `${stem(files[0].name)}-page-1.jpg`, blob: pages[0].blob, details: ["Rendered 1 page locally", `Output size: ${formatBytes(pages[0].blob.size)}`] };
+    }
     const { default: JSZip } = await import("jszip");
     const zip = new JSZip();
     pages.forEach((page, index) => zip.file(`${stem(files[0].name)}-page-${index + 1}.jpg`, page.blob));
@@ -424,20 +680,17 @@ export const processPdfTool = async (tool: PdfToolId, files: File[], options: Pd
   }
 
   if (tool === "pdf-to-word") {
-    const pages = await extractPdfPages(files[0]);
-    const blob = await createDocx(pages);
-    return { fileName: `${stem(files[0].name)}.docx`, blob, details: ["Created an editable text-first DOCX", "Complex layouts may be simplified"] };
+    const result = conversionMode === "visual" ? await visualPdfToWord(files[0]) : await editablePdfToWord(files[0]);
+    return { fileName: `${stem(files[0].name)}.docx`, blob: result.blob, details: result.details };
   }
 
   if (tool === "pdf-to-ppt") {
-    const pages = await extractPdfPages(files[0]);
-    const blob = await createPptx(pages);
-    return { fileName: `${stem(files[0].name)}.pptx`, blob, details: [`Created ${pages.length} editable text slides`, "Complex layouts may be simplified"] };
+    const result = conversionMode === "visual" ? await visualPdfToPpt(files[0]) : await editablePdfToPpt(files[0]);
+    return { fileName: `${stem(files[0].name)}.pptx`, blob: result.blob, details: result.details };
   }
 
-  const lines = await extractDocxText(files[0]);
-  const blob = await textPdf(lines, options.pageSize);
-  return { fileName: `${stem(files[0].name)}.pdf`, blob, details: ["Created a readable text-first PDF", "Complex Word layouts may be simplified"] };
+  const result = conversionMode === "visual" ? await visualWordToPdf(files[0]) : await editableWordToPdf(files[0], options);
+  return { fileName: `${stem(files[0].name)}.pdf`, blob: result.blob, details: result.details };
 };
 
 export const getPdfPageCount = async (file: File) => {

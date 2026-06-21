@@ -65,7 +65,9 @@ export function Breadcrumbs() {
 
       // Business
       "invoice-generator": "Invoice Generator",
+      "expenses": "Expenses",
       "qr-generator": "QR Code Maker",
+      "utm-builder": "UTM Link Builder",
 
       // Developer
       "json-formatter": "JSON Formatter",

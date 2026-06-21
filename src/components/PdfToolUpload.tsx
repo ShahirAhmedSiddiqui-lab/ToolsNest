@@ -17,6 +17,7 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
   const [files, setFiles] = useState<File[]>([]);
   const [options, setOptions] = useState<PdfToolOptions>({
     compression: "medium",
+    conversionMode: "visual",
     pageSize: "A4",
     orientation: "portrait",
     splitMode: "ranges",
@@ -100,6 +101,25 @@ export const PdfToolUpload = ({ tool, icon = "pdf", title, browseText, multiple 
         <div className="mb-4 flex flex-col items-center gap-2"><select aria-label="Compression level" className="bg-surface-container-low border border-border-slate rounded-lg px-4 py-2 text-sm" value={options.compression} onChange={(event) => setOptions({ ...options, compression: event.target.value as PdfToolOptions["compression"] })}>
           <option value="low">Low compression</option><option value="medium">Medium compression</option><option value="high">High compression</option>
         </select><p className="text-xs text-on-surface-variant">Low keeps original quality, medium balances savings and clarity, and high only rasterizes when it produces a meaningful size win.</p></div>
+      )}
+
+      {["pdf-to-word", "pdf-to-ppt", "word-to-pdf"].includes(tool) && (
+        <div className="mb-4 flex max-w-xl flex-col items-center gap-2">
+          <select
+            aria-label="Conversion mode"
+            className="bg-surface-container-low border border-border-slate rounded-lg px-4 py-2 text-sm"
+            value={options.conversionMode}
+            onChange={(event) => setOptions({ ...options, conversionMode: event.target.value as PdfToolOptions["conversionMode"] })}
+          >
+            <option value="visual">Visual Match</option>
+            <option value="editable">Editable</option>
+          </select>
+          <p className="text-xs text-on-surface-variant">
+            {options.conversionMode === "visual"
+              ? "Visual Match keeps the page appearance as closely as possible. Editing is limited."
+              : "Editable rebuilds text for easier editing. Layout may change."}
+          </p>
+        </div>
       )}
 
       {tool === "rotate-pdf" && (
